@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@keyframes power-flow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-power-flow {
+  animation: power-flow 3s linear infinite;
+}
