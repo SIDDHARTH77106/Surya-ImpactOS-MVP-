@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 
 const emptySubscribe = () => () => {};
+const chartInitialDimension = { width: 1, height: 1 };
 
 const continuityData = [
   { name: 'Before Solar (2023)', value: 1305, fill: '#cbd5e1' },
@@ -170,9 +171,9 @@ export default function DigitalLearningReport() {
                 <p className="text-sm font-bold text-[#0a192f]">41% increase in digital learning hours after solar installation.</p>
                 <span className="text-xs font-black uppercase tracking-[0.16em] text-[#ea580c]">Visualized</span>
               </div>
-              <div className="h-64">
+              <div className="w-full h-[256px] min-h-[256px] relative">
                 {isMounted ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={chartInitialDimension}>
                     <BarChart data={continuityData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                       <CartesianGrid vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} interval={0} />
@@ -204,9 +205,9 @@ export default function DigitalLearningReport() {
               Solar backup ensures reliable power for all critical digital learning infrastructure.
             </p>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr] md:items-center">
-              <div className="h-56">
+              <div className="w-full h-[224px] min-h-[224px] relative">
                 {isMounted ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={chartInitialDimension}>
                     <PieChart>
                       <Pie
                         data={uptimeData}
@@ -296,9 +297,9 @@ export default function DigitalLearningReport() {
                 <p className="text-sm font-bold text-[#0a192f]">Solar Generation vs Consumption (kWh)</p>
                 <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Placeholder</span>
               </div>
-              <div className="mt-4 h-52">
+              <div className="mt-4 w-full h-[208px] min-h-[208px] relative">
                 {isMounted ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={chartInitialDimension}>
                     <RechartsLineChart data={performanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="month" tick={{ fill: '#475569', fontSize: 11 }} />

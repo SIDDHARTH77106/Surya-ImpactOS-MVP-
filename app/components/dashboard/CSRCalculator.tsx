@@ -1,6 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+// 🚀 Naye icons import kiye gaye hain niche wale rich data ke liye
+import { ShieldCheck, HeartHandshake, Sprout } from 'lucide-react'; 
 
 export default function CSRCalculator() {
   const [investment, setInvestment] = useState(40);
@@ -20,9 +22,9 @@ export default function CSRCalculator() {
       <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#f59e0b] via-[#ea580c] to-[#10b981]" />
       <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-[#10b981]/5 blur-3xl rounded-full pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto text-center space-y-8 md:space-y-10 relative z-10">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-[#0a192f] tracking-tight">CSR Impact Calculator</h2>
+      <div className="max-w-4xl mx-auto space-y-8 md:space-y-10 relative z-10">
+        <div className="text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#0a192f] tracking-tight">CSR Impact Projections</h2>
           <p className="text-slate-500 font-medium mt-3 text-sm md:text-base">Drag the slider to project the massive scale of your potential investment.</p>
         </div>
         
@@ -46,7 +48,7 @@ export default function CSRCalculator() {
           </div>
           
           {/* Output Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8 md:mb-10">
             {[
               { label: "INVESTMENT", value: investment >= 100 ? `₹${(investment/100).toFixed(1)} Cr` : `₹${investment} L`, color: "text-[#ea580c]" },
               { label: "SCHOOLS", value: schools, color: "text-[#0a192f]" },
@@ -75,6 +77,32 @@ export default function CSRCalculator() {
                 </AnimatePresence>
               </div>
             ))}
+          </div>
+
+          {/* 🚀 NEW SECTION: ENRICHED DATA FOR CSR REPORT */}
+          {/* Ye section PDF export mein gap fill karega aur report ko solid look dega */}
+          <div className="border-t border-slate-200/60 pt-8 mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+             <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-50 rounded-xl text-blue-600 shadow-sm"><ShieldCheck size={24}/></div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0a192f] mb-1">Zero Opex Model</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">Includes 5-year AMC, battery replacements, and digital asset upkeep. No hidden costs for schools.</p>
+                </div>
+             </div>
+             <div className="flex items-start gap-4">
+                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 shadow-sm"><Sprout size={24}/></div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0a192f] mb-1">Carbon Credit Ready</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">Projects mapped to UNFCCC standards. Generates monetizable carbon offsets for your ESG portfolio.</p>
+                </div>
+             </div>
+             <div className="flex items-start gap-4">
+                <div className="p-3 bg-orange-50 rounded-xl text-orange-600 shadow-sm"><HeartHandshake size={24}/></div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0a192f] mb-1">Community Integration</h4>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">Creates local employment for setup/maintenance and boosts regional digital literacy rates.</p>
+                </div>
+             </div>
           </div>
           
         </div>

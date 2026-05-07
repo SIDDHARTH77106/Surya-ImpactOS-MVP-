@@ -3,9 +3,14 @@ import React from 'react';
 import { School, Zap, Users, Leaf, Activity } from 'lucide-react';
 import CountUp from 'react-countup';
 import { motion } from 'framer-motion';
-import { DASHBOARD_DATA } from '../../constants/mockData';
+import { SCHOOL_DATA, SchoolFilter } from '../../constants/mockData';
 
-export default function KPICards() {
+type KPICardsProps = {
+  selectedSchool: SchoolFilter;
+};
+
+export default function KPICards({ selectedSchool }: KPICardsProps) {
+  const kpis = SCHOOL_DATA[selectedSchool].kpis;
   
   // Har card ke liye unique theme generator
   const getCardTheme = (label: string) => {
@@ -25,7 +30,7 @@ export default function KPICards() {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
-      {DASHBOARD_DATA.kpis.map((kpi, idx) => {
+      {kpis.map((kpi, idx) => {
         const theme = getCardTheme(kpi.label);
         
         return (

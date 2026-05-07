@@ -1,12 +1,19 @@
 "use client";
 import React from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { DASHBOARD_DATA } from '../../constants/mockData';
+import { SCHOOL_DATA, SchoolFilter } from '../../constants/mockData';
 import { motion } from 'framer-motion';
 
 const emptySubscribe = () => () => {};
+const chartInitialDimension = { width: 1, height: 1 };
 
-export default function Analytics() {
+type AnalyticsProps = {
+  selectedSchool: SchoolFilter;
+};
+
+export default function Analytics({ selectedSchool }: AnalyticsProps) {
+  const chartData = SCHOOL_DATA[selectedSchool].chartData;
+
   const isMounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -28,11 +35,11 @@ export default function Analytics() {
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Measured in kWh</p>
       </div>
       
-      {/* Container height badha di aur padding theek ki */}
-      <div className="flex-1 min-h-[240px] md:min-h-[280px] w-full relative z-10 pb-2 md:pb-4">
+      {/* Keep a strict chart box so Recharts never measures a zero-height parent during animation. */}
+      <div className="w-full h-[300px] min-h-[300px] relative z-10 pb-2 md:pb-4">
         {isMounted ? (
-          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-            <AreaChart data={DASHBOARD_DATA.chartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={chartInitialDimension}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
               <defs>
                 <linearGradient id="colorGen" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.5}/>

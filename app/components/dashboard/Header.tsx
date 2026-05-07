@@ -4,6 +4,9 @@ import Image from 'next/image';
 import { Calendar, Download, Loader2 } from 'lucide-react';
 import { DASHBOARD_DATA } from '../../constants/mockData';
 import { motion } from 'framer-motion';
+// 🚀 FIX: Import toJpeg
+import { toJpeg } from 'html-to-image';
+import jsPDF from 'jspdf';
 
 export default function Header() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -15,119 +18,88 @@ export default function Header() {
     const element = document.getElementById(elementId) || document.getElementById('dashboard-content');
 
     if (!element) {
-      alert('Error: Report content not found! Please ensure your report section has id="digital-learning-report-export".');
+      alert('Error: Report content not found!');
       setIsDownloading(false);
       return;
     }
 
     try {
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentWindow?.document;
-      if (!iframeDoc) return;
-
-      const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
-      let stylesHtml = '';
-      styles.forEach((node) => { stylesHtml += node.outerHTML; });
-
-      const logoUrl = window.location.origin + '/sangam logo.png';
-
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Surya_ImpactOS_ESG_Report</title>
-            ${stylesHtml}
-            <style>
-              /* 1. PAGE SETUP */
-              @page { 
-                size: A4 portrait; 
-                margin: 10mm !important; 
-              }
-              
-              body {
-                background-color: transparent !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                font-family: sans-serif;
-              }
-
-              /* 2. PDF HEADER - SEEDHA LOGO (rotate(180deg)) & BG REMOVED */
-              .pdf-header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                margin-bottom: 15px;
-                border-bottom: 2px solid #f1f5f9;
-                padding-bottom: 10px;
-                page-break-after: avoid !important; /* Header ke baad page break na ho */
-              }
-              .pdf-header img {
-                height: 65px;
-                width: auto;
-                margin-bottom: 10px;
-                transform: rotate(180deg) !important; /* Ulat logo ko seedha karta hai */
-                mix-blend-mode: multiply !important; /* White background hatata hai */
-              }
-              .pdf-header h1 {
-                font-size: 22px;
-                color: #0a192f;
-                font-weight: 800;
-                margin: 0;
-              }
-
-              /* 3. FIX FOR BLANK FIRST PAGE */
-              /* Main container ko normal flow karne do */
-              #${elementId} {
-                page-break-inside: auto !important; 
-              }
-              
-              /* Sirf chhote cards ko break hone se roko, pure page ko nahi */
-              .grid > div, section > div {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                margin-bottom: 15px !important;
-              }
-              
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="pdf-header">
-              <img src="${logoUrl}" alt="Logo" />
-              <h1>Surya ImpactOS Performance Report</h1>
-            </div>
-            ${element.outerHTML}
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      setTimeout(() => {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print(); 
+      const style = document.createElement('style');
+      style.innerHTML = `
+        #${element.id}, #${element.id} * {
+          animation: none !important;
+          transition: none !important;
+          opacity: 1 !important;
+          transform: none !important;
         }
-        setIsDownloading(false);
-        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-      }, 2000);
+      `;
+      document.head.appendChild(style);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 🚀 SIZE REDUCTION
+      const dataUrl = await toJpeg(element, {
+        cacheBust: true,
+        backgroundColor: '#fcfdfa',
+        pixelRatio: 1.5,
+        quality: 0.8,
+        style: {
+          margin: '0', 
+          padding: '20px' 
+        }
+      });
+
+      document.head.removeChild(style);
+
+      // 🚀 SIZE REDUCTION
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true, // Compress PDF
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const headerHeight = 25;
+      pdf.setFillColor(252, 250, 248);
+      pdf.rect(0, 0, pdfWidth, headerHeight, 'F');
+
+      pdf.setTextColor(6, 78, 59);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SURYA IMPACTOS PERFORMANCE REPORT', pdfWidth / 2, 16, { align: 'center' });
+
+      pdf.setDrawColor(209, 250, 229);
+      pdf.setLineWidth(0.5);
+      pdf.line(10, 22, pdfWidth - 10, 22);
+
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const margin = 10;
+      
+      const availableWidth = pdfWidth - (margin * 2);
+      const availableHeight = pdfHeight - headerHeight - margin;
+
+      let finalImgWidth = availableWidth;
+      let finalImgHeight = (imgProps.height * availableWidth) / imgProps.width;
+
+      if (finalImgHeight > availableHeight) {
+        finalImgHeight = availableHeight;
+        finalImgWidth = (imgProps.width * availableHeight) / imgProps.height;
+      }
+
+      const xOffset = (pdfWidth - finalImgWidth) / 2;
+
+      // 🚀 Insert as JPEG
+      pdf.addImage(dataUrl, 'JPEG', xOffset, headerHeight, finalImgWidth, finalImgHeight, undefined, 'FAST');
+      
+      pdf.save(`Surya_ImpactOS_ESG_Report.pdf`);
 
     } catch (error) {
       console.error('Print failed:', error);
+      alert('Failed to generate PDF. Check console.');
+    } finally {
       setIsDownloading(false);
     }
   };
@@ -147,7 +119,6 @@ export default function Header() {
               alt="Surya Sangam Logo"
               fill
               sizes="64px"
-              /* rotate-180 logo ko ghuma kar seedha karega, mix-blend-multiply bg hatayega */
               className="object-contain p-1 rotate-180 mix-blend-multiply" 
             />
           </div>

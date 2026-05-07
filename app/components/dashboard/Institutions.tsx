@@ -1,10 +1,18 @@
 "use client";
 import React from 'react';
 import { ShieldCheck, Zap, MapPin } from 'lucide-react';
-import { DASHBOARD_DATA } from '../../constants/mockData';
+import { DASHBOARD_DATA, SchoolFilter } from '../../constants/mockData';
 import { motion } from 'framer-motion';
 
-export default function Institutions() {
+type InstitutionsProps = {
+  selectedSchool: SchoolFilter;
+};
+
+export default function Institutions({ selectedSchool }: InstitutionsProps) {
+  const institutions = DASHBOARD_DATA.institutions.filter((inst) => (
+    selectedSchool === 'all' || inst.key === selectedSchool
+  ));
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 40 }}
@@ -24,7 +32,7 @@ export default function Institutions() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-        {DASHBOARD_DATA.institutions.map((inst, idx) => (
+        {institutions.map((inst, idx) => (
           <motion.div 
             key={idx} 
             initial={{ opacity: 0, y: 30 }}

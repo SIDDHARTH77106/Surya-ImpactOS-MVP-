@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { ArrowDownToLine, FileText, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DASHBOARD_DATA } from '../../constants/mockData';
+// 🚀 FIX: Import toJpeg instead of toPng
+import { toJpeg } from 'html-to-image'; 
+import jsPDF from 'jspdf';
 
 function reportTargetForTitle(title: string) {
   const lowerTitle = title.toLowerCase();
@@ -29,165 +32,97 @@ export default function ReportPreview() {
   const handleDownloadClick = async (title: string) => {
     setDownloading(title);
 
-    // REQUIREMENT 1: Accurate Data Routing - Route to specific container based on report name
     const targetId = reportTargetForTitle(title);
-    const element = document.getElementById(targetId);
+    let element = document.getElementById(targetId);
 
     if (!element) {
-      alert(`⚠️ ${title} ka data nahi mila!\n\nKripya apne dashboard code mein us section ke bahaar id="${targetId}" lagayein.`);
+      if (title.includes('School')) element = document.getElementById('school-report-export') || document.getElementById('digital-learning-report-export');
+      else element = document.getElementById('dashboard-content');
+    }
+
+    if (!element) {
+      alert(`⚠️ ${title} ka data dashboard par nahi mila!`);
       setDownloading(null);
       return;
     }
 
     try {
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentWindow?.document;
-      if (!iframeDoc) return;
-
-      const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
-      let stylesHtml = '';
-      styles.forEach((node) => { stylesHtml += node.outerHTML; });
-
-      const logoUrl = window.location.origin + '/sangam logo.png';
-      
-      const clonedElement = element.cloneNode(true) as HTMLElement;
-      
-      // REQUIREMENT 2: Perfect Margins & Padding - Ensure no content pushed to second page
-      clonedElement.style.setProperty('margin-top', '0', 'important');
-      clonedElement.style.setProperty('padding-top', '0', 'important');
-      clonedElement.style.setProperty('height', 'auto', 'important');
-      clonedElement.style.setProperty('min-height', '0', 'important');
-
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${filenameForTitle(title)}</title>
-            ${stylesHtml}
-            <style>
-              /* ========================================
-                 REQUIREMENT 2: PERFECT A4 FORMATTING
-                 ======================================== */
-              @page { 
-                size: A4 portrait; 
-                margin: 15mm !important; 
-              }
-
-              html, body {
-                /* REQUIREMENT 3: Eco-Friendly Background Tint */
-                background-color: #fcfdfa !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                height: auto !important;
-                min-height: 0 !important;
-                overflow: visible !important;
-                font-family: sans-serif;
-              }
-
-              /* ========================================
-                 REQUIREMENT 2: KILL BLANK PAGES
-                 Remove height constraints & page breaks
-                 ======================================== */
-              * {
-                page-break-inside: auto !important;
-                break-inside: auto !important;
-                page-break-before: auto !important;
-                break-before: auto !important;
-                perspective: none !important;
-                transform-style: flat !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-
-              /* REQUIREMENT 2: Strip Tailwind Full-Height Classes */
-              .min-h-screen, .h-screen, .h-full { 
-                min-height: 0 !important; 
-                height: auto !important; 
-              }
-
-              /* REQUIREMENT 2: Main wrapper - allow natural flowing pages */
-              #pdf-content-wrapper {
-                margin-top: 0 !important;
-                padding-top: 0 !important;
-                display: block !important;
-                height: auto !important;
-                min-height: 0 !important;
-                page-break-inside: auto !important;
-              }
-
-              /* REQUIREMENT 2: Apply page-break-inside: avoid only on inner cards/grid items */
-              #pdf-content-wrapper [class*="card"],
-              #pdf-content-wrapper [class*="grid"] > * {
-                page-break-inside: avoid !important;
-              }
-
-              /* ========================================
-                 REQUIREMENT 3: ECO-FRIENDLY THEME
-                 Green aesthetics integration
-                 ======================================== */
-              .pdf-header {
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                text-align: center;
-                margin-bottom: 20px; 
-                /* Change border to subtle green */
-                border-bottom: 2px solid #d1fae5 !important;
-                padding-bottom: 15px;
-              }
-
-              .pdf-header img {
-                height: 65px; 
-                width: auto; 
-                margin-bottom: 10px;
-                /* Logo remains straight and blends seamlessly */
-                transform: rotate(180deg) !important; 
-                mix-blend-mode: multiply !important; 
-              }
-
-              /* REQUIREMENT 3: H1 color changed to deep emerald green */
-              .pdf-header h1 { 
-                font-size: 22px; 
-                color: #064e3b !important;
-                font-weight: 800; 
-                margin: 0; 
-              }
-            </style>
-          </head>
-          <body>
-            <div class="pdf-header">
-              <img src="${logoUrl}" alt="Logo" />
-              <h1>${title}</h1>
-            </div>
-            <div id="pdf-content-wrapper">
-              ${clonedElement.outerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      setTimeout(() => {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print(); 
+      const style = document.createElement('style');
+      style.innerHTML = `
+        #${element.id}, #${element.id} * {
+          animation: none !important;
+          transition: none !important;
+          opacity: 1 !important;
+          transform: none !important;
         }
-        setDownloading(null);
-        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-      }, 2000);
+      `;
+      document.head.appendChild(style);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 🚀 SIZE REDUCTION: Use JPEG with compression quality
+      const dataUrl = await toJpeg(element, {
+        cacheBust: true,
+        backgroundColor: '#fcfdfa',
+        pixelRatio: 1.5, // Dropped slightly from 2.0 to save MBs, still very sharp
+        quality: 0.8, // Compress image by 20%
+        style: {
+          margin: '0', 
+          padding: '20px' 
+        }
+      });
+
+      document.head.removeChild(style);
+
+      // 🚀 SIZE REDUCTION: Turn on PDF compression
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true, // Forces PDF size compression
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const headerHeight = 25;
+      pdf.setFillColor(252, 250, 248);
+      pdf.rect(0, 0, pdfWidth, headerHeight, 'F');
+
+      pdf.setTextColor(6, 78, 59);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(title.toUpperCase(), pdfWidth / 2, 16, { align: 'center' });
+
+      pdf.setDrawColor(209, 250, 229);
+      pdf.setLineWidth(0.5);
+      pdf.line(10, 22, pdfWidth - 10, 22);
+
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const margin = 10;
+      
+      const availableWidth = pdfWidth - (margin * 2);
+      const availableHeight = pdfHeight - headerHeight - margin;
+
+      let finalImgWidth = availableWidth;
+      let finalImgHeight = (imgProps.height * availableWidth) / imgProps.width;
+
+      if (finalImgHeight > availableHeight) {
+        finalImgHeight = availableHeight;
+        finalImgWidth = (imgProps.width * availableHeight) / imgProps.height;
+      }
+
+      const xOffset = (pdfWidth - finalImgWidth) / 2;
+
+      // 🚀 FIX: Insert as JPEG instead of PNG and use "FAST" compression alias
+      pdf.addImage(dataUrl, 'JPEG', xOffset, headerHeight, finalImgWidth, finalImgHeight, undefined, 'FAST');
+      
+      pdf.save(`${filenameForTitle(title)}.pdf`);
 
     } catch (error) {
-      console.error('Print failed:', error);
-      alert('Failed to generate PDF. Check console for details.');
+      console.error('PDF Generation Failed:', error);
+      alert('PDF generation failed. Please check the console.');
+    } finally {
       setDownloading(null);
     }
   };
@@ -227,7 +162,9 @@ export default function ReportPreview() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-base md:text-lg font-black text-[#0a192f] group-hover:text-[#ea580c]">{isDownloading ? 'Preparing PDF...' : report.title}</p>
+                  <p className="text-base md:text-lg font-black text-[#0a192f] group-hover:text-[#ea580c]">
+                    {isDownloading ? 'Capturing Report...' : report.title}
+                  </p>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">{report.date} • {report.type}</p>
                 </div>
               </div>
