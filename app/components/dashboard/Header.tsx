@@ -8,8 +8,38 @@ import { motion } from 'framer-motion';
 import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 
+function getLastThreeDaysRange(date: Date) {
+  const endDate = new Date(date);
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - 3);
+
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+  const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short' });
+  const fullFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (sameMonth) {
+    return `${monthFormatter.format(startDate)} ${startDate.getDate()} - ${monthFormatter.format(endDate)} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+  }
+
+  if (sameYear) {
+    return `${monthFormatter.format(startDate)} ${startDate.getDate()} - ${monthFormatter.format(endDate)} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+  }
+
+  return `${fullFormatter.format(startDate)} - ${fullFormatter.format(endDate)}`;
+}
+
 export default function Header() {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [lastThreeDaysRange, setLastThreeDaysRange] = useState('Loading range...');
+
+  React.useEffect(() => {
+    const initializeDateRange = window.setTimeout(() => {
+      setLastThreeDaysRange(getLastThreeDaysRange(new Date()));
+    }, 0);
+
+    return () => window.clearTimeout(initializeDateRange);
+  }, []);
 
   const downloadPDF = async () => {
     setIsDownloading(true);
@@ -136,7 +166,7 @@ export default function Header() {
 
       <div className="mt-2 flex w-full flex-wrap gap-3 md:mt-0 md:w-auto md:gap-4">
         <button className="flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 sm:px-5 sm:py-3 sm:text-sm md:flex-none">
-          <Calendar size={18} className="text-blue-500" /> May 2024 - May 2025
+          <Calendar size={18} className="text-emerald-600" /> Last 3 Days: {lastThreeDaysRange}
         </button>
 
         <button
@@ -148,7 +178,7 @@ export default function Header() {
             ) : (
               <Download size={18} className="mr-2" />
             )}
-            {isDownloading ? 'Processing...' : 'Download ESG Report'}
+            {isDownloading ? 'Processing...' : 'Download Report'}
         </button>
       </div>
     </motion.header>

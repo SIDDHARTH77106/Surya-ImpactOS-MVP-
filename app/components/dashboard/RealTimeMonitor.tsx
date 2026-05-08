@@ -1,330 +1,405 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Battery, CloudSun, Cpu, ShieldCheck, Sun,
-  ThermometerSun, Wind, Zap, Activity, MapPin, 
-  Droplets, Waves, Server, ArrowRightLeft, Terminal, ChevronDown, ChevronUp
+  Activity,
+  AlertTriangle,
+  BatteryCharging,
+  BookOpenCheck,
+  CalendarClock,
+  CheckCircle2,
+  CircleDotDashed,
+  CloudSun,
+  Droplets,
+  GraduationCap,
+  Leaf,
+  MapPin,
+  MonitorCheck,
+  School,
+  Server,
+  ThermometerSun,
+  Wrench,
+  Zap,
 } from 'lucide-react';
-import { AnimatePresence, motion, Variants } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { SchoolFilter } from '../../constants/mockData';
 
-type DynamicValuesKeys = 'solar' | 'battery' | 'load' | 'grid';
-type SchoolKey = 'surana' | 'jeevanDhara';
+type MonitorSchoolKey = 'government' | 'jeevan';
 
-type SchoolMetric = {
-  pvGeneration: number;
-  loadPower: number;
-  batterySoc: number;
-  yieldToday: number;
+type SchoolProfile = {
+  tabLabel: string;
+  name: string;
+  location: string;
+  system: string;
   co2Offset: number;
+  energyGenerated: number;
+  temperature: number;
+  humidity: number;
+  aqi: number;
+  activeHours: number;
+  dailyAverageMins: number;
+  batteryHealth: number;
+  inverterLoad: number;
+  alerts: string[];
 };
 
-const schoolMeta: Record<SchoolKey, {
-  name: string; system: string; location: string;
-  capacity: string; classrooms: string; digitalLearning: string;
-}> = {
-  surana: {
-    name: 'Govt. Primary School Surana', system: '5kW Hybrid', location: 'Haryana',
-    capacity: '5kW Hybrid', classrooms: '2 Classrooms on Solar', digitalLearning: '2 hrs digital learning/classroom',
+const SCHOOL_PROFILES: Record<MonitorSchoolKey, SchoolProfile> = {
+  government: {
+    tabLabel: 'Government School',
+    name: 'Government School',
+    location: 'Surana, Haryana',
+    system: '5kW Hybrid Solar Lab',
+    co2Offset: 5.84,
+    energyGenerated: 184.62,
+    temperature: 31.8,
+    humidity: 46,
+    aqi: 42,
+    activeHours: 400,
+    dailyAverageMins: 120,
+    batteryHealth: 91,
+    inverterLoad: 68,
+    alerts: [
+      'Panel cleaning due on east-facing array after dust accumulation.',
+      'Inverter fan inspection recommended during next service window.',
+    ],
   },
-  jeevanDhara: {
-    name: 'Jeevan Dhara Welfare Society', system: '6kW Hybrid', location: 'Ghaziabad',
-    capacity: '6kW Hybrid', classrooms: '2 Classrooms on Solar', digitalLearning: '2 hrs digital learning/classroom',
+  jeevan: {
+    tabLabel: 'Jeevan Dhaara',
+    name: 'Jeevan Dhaara',
+    location: 'Ghaziabad, Uttar Pradesh',
+    system: '6kW Hybrid Solar Lab',
+    co2Offset: 6.76,
+    energyGenerated: 216.48,
+    temperature: 32.6,
+    humidity: 51,
+    aqi: 58,
+    activeHours: 400,
+    dailyAverageMins: 120,
+    batteryHealth: 87,
+    inverterLoad: 74,
+    alerts: [
+      'Battery bank health review required for cell balancing.',
+      'Panel cleaning due after reduced morning generation trend.',
+      'Inverter DC input terminal torque check scheduled.',
+    ],
   },
 };
-
-const liveMetrics = [
-  { label: 'Solar Output', unit: 'kW', icon: Zap, color: 'text-[#f59e0b]', metricKey: 'solar' as DynamicValuesKeys },
-  { label: 'Battery Status', unit: '%', icon: Battery, color: 'text-[#10b981]', metricKey: 'battery' as DynamicValuesKeys },
-  { label: 'Load Power', unit: 'kW', icon: Cpu, color: 'text-blue-400', metricKey: 'load' as DynamicValuesKeys },
-  { label: 'Grid Export', unit: 'kW', icon: ArrowRightLeft, color: 'text-purple-400', metricKey: 'grid' as DynamicValuesKeys },
-];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function splitDecimal(value: number, decimals = 2) {
+  const [integer, decimal] = value.toFixed(decimals).split('.');
+  return { integer, decimal };
+}
+
+function getInitialSchool(selectedSchool: SchoolFilter): MonitorSchoolKey {
+  return selectedSchool === 'jeevanDhara' ? 'jeevan' : 'government';
+}
+
+function formatSyncTime(date: Date) {
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+}
+
+function getProfileState(school: MonitorSchoolKey) {
+  const profile = SCHOOL_PROFILES[school];
+
+  return {
+    telemetry: {
+      co2Offset: profile.co2Offset,
+      energyGenerated: profile.energyGenerated,
+    },
+    env: {
+      temperature: profile.temperature,
+      humidity: profile.humidity,
+      aqi: profile.aqi,
+    },
+  };
+}
+
 export default function RealTimeMonitor({ selectedSchool }: { selectedSchool: SchoolFilter }) {
-  // Weather Dropdown State
-  const [showWeather, setShowWeather] = useState(false);
+  const initialSchool = getInitialSchool(selectedSchool);
+  const [monitorSchool, setMonitorSchool] = useState<MonitorSchoolKey>(initialSchool);
+  const [now, setNow] = useState<Date | null>(null);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [telemetry, setTelemetry] = useState(() => getProfileState(initialSchool).telemetry);
+  const [envValues, setEnvValues] = useState(() => getProfileState(initialSchool).env);
 
-  const [envValues, setEnvValues] = useState({
-    irradiance: 850, temperature: 32.4, windSpeed: 12, aqi: 45, humidity: 42, uvIndex: 7.2
-  });
-
-  const [schoolMetrics, setSchoolMetrics] = useState<Record<SchoolKey, SchoolMetric>>({
-    surana: { pvGeneration: 3.8, loadPower: 2.1, batterySoc: 87, yieldToday: 14.5, co2Offset: 12.1 },
-    jeevanDhara: { pvGeneration: 4.5, loadPower: 2.5, batterySoc: 84, yieldToday: 18.2, co2Offset: 15.3 },
-  });
-
-  const logs = [
-    "SYS_INIT: Telemetry sync established.",
-    "BATT_CTRL: Optimal charging at 1.2kW.",
-    "GRID_MON: Frequency stable at 50.02Hz."
-  ];
+  const handleMonitorSchoolChange = (school: MonitorSchoolKey) => {
+    const nextState = getProfileState(school);
+    setMonitorSchool(school);
+    setTelemetry(nextState.telemetry);
+    setEnvValues(nextState.env);
+    setLastSync(new Date());
+  };
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const initializeClock = window.setTimeout(() => {
+      const hydratedTime = new Date();
+      setNow(hydratedTime);
+      setLastSync(hydratedTime);
+    }, 0);
+
+    const timer = window.setInterval(() => {
+      const profile = SCHOOL_PROFILES[monitorSchool];
+
+      setTelemetry((prev) => ({
+        co2Offset: Number(clamp(prev.co2Offset + (Math.random() - 0.35) * 0.06, profile.co2Offset - 0.12, profile.co2Offset + 0.42).toFixed(2)),
+        energyGenerated: Number(clamp(prev.energyGenerated + Math.random() * 0.42, profile.energyGenerated - 0.5, profile.energyGenerated + 5.8).toFixed(2)),
+      }));
+
       setEnvValues((prev) => ({
-        irradiance: Math.round(clamp(prev.irradiance + (Math.random() - 0.5) * 24, 800, 950)),
-        temperature: Number(clamp(prev.temperature + (Math.random() - 0.5) * 0.5, 30, 38).toFixed(1)),
-        windSpeed: Number(clamp(prev.windSpeed + (Math.random() - 0.5) * 1.4, 8, 18).toFixed(1)),
-        aqi: Math.round(clamp(prev.aqi + (Math.random() - 0.5) * 3, 38, 58)),
-        humidity: Math.round(clamp(prev.humidity + (Math.random() - 0.5) * 2, 35, 60)),
-        uvIndex: Number(clamp(prev.uvIndex + (Math.random() - 0.5) * 0.2, 6, 9).toFixed(1)),
+        temperature: Number(clamp(prev.temperature + (Math.random() - 0.5) * 0.4, profile.temperature - 1.2, profile.temperature + 1.4).toFixed(1)),
+        humidity: Math.round(clamp(prev.humidity + (Math.random() - 0.5) * 2, profile.humidity - 8, profile.humidity + 8)),
+        aqi: Math.round(clamp(prev.aqi + (Math.random() - 0.5) * 3, profile.aqi - 10, profile.aqi + 12)),
       }));
 
-      setSchoolMetrics((prev) => ({
-        surana: {
-          pvGeneration: Number(clamp(prev.surana.pvGeneration + (Math.random() - 0.5) * 0.24, 3.3, 4.3).toFixed(1)),
-          loadPower: Number(clamp(prev.surana.loadPower + (Math.random() - 0.5) * 0.14, 1.8, 2.6).toFixed(1)),
-          batterySoc: Math.round(clamp(prev.surana.batterySoc + (Math.random() - 0.5) * 2, 78, 92)),
-          yieldToday: Number((prev.surana.yieldToday + 0.01).toFixed(2)),
-          co2Offset: Number((prev.surana.co2Offset + 0.008).toFixed(2)),
-        },
-        jeevanDhara: {
-          pvGeneration: Number(clamp(prev.jeevanDhara.pvGeneration + (Math.random() - 0.5) * 0.28, 4.0, 5.2).toFixed(1)),
-          loadPower: Number(clamp(prev.jeevanDhara.loadPower + (Math.random() - 0.5) * 0.16, 2.1, 3.0).toFixed(1)),
-          batterySoc: Math.round(clamp(prev.jeevanDhara.batterySoc + (Math.random() - 0.5) * 2, 76, 91)),
-          yieldToday: Number((prev.jeevanDhara.yieldToday + 0.01).toFixed(2)),
-          co2Offset: Number((prev.jeevanDhara.co2Offset + 0.008).toFixed(2)),
-        },
-      }));
-    }, 3500);
+      setNow(new Date());
+      setLastSync(new Date());
+    }, 2000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      window.clearTimeout(initializeClock);
+      window.clearInterval(timer);
+    };
+  }, [monitorSchool]);
+
+  const profile = SCHOOL_PROFILES[monitorSchool];
+  const co2Parts = splitDecimal(telemetry.co2Offset);
+  const energyParts = splitDecimal(telemetry.energyGenerated);
+  const minutesFromMidnight = now ? now.getHours() * 60 + now.getMinutes() : null;
+  const classesActive = minutesFromMidnight !== null && minutesFromMidnight > 11 * 60 && minutesFromMidnight < 14 * 60;
+  const offHours = minutesFromMidnight === null || minutesFromMidnight < 10 * 60 || minutesFromMidnight > 15 * 60;
+  const activeClassValue = now ? (classesActive ? '2 / 2' : '0 / 2') : '-- / 2';
+
+  const statusTone = classesActive
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+    : offHours
+      ? 'border-slate-200 bg-slate-100 text-slate-400'
+      : 'border-amber-200 bg-amber-50 text-amber-700';
 
   const containerVariants: Variants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94], staggerChildren: 0.1 } },
+    hidden: { opacity: 0, y: 36 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94], staggerChildren: 0.06 } },
   };
 
   const itemVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } },
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
-  const activeSchoolKeys = (selectedSchool === 'all' ? Object.keys(schoolMeta) : [selectedSchool]) as SchoolKey[];
-
-  const liveCardValues: Record<DynamicValuesKeys, string> = {
-    solar: activeSchoolKeys.reduce((total, schoolKey) => total + schoolMetrics[schoolKey].pvGeneration, 0).toFixed(1),
-    load: activeSchoolKeys.reduce((total, schoolKey) => total + schoolMetrics[schoolKey].loadPower, 0).toFixed(1),
-    battery: Math.round(activeSchoolKeys.reduce((total, schoolKey) => total + schoolMetrics[schoolKey].batterySoc, 0) / activeSchoolKeys.length).toString(),
-    grid: (activeSchoolKeys.reduce((total, schoolKey) => total + Math.max(0, schoolMetrics[schoolKey].pvGeneration - schoolMetrics[schoolKey].loadPower), 0) * 0.4).toFixed(1),
-  };
+  const monitorCards = useMemo(() => [
+    {
+      label: 'CO2 Offset',
+      icon: Leaf,
+      unit: 'tons',
+      parts: co2Parts,
+      tone: 'text-emerald-600',
+      bg: 'from-emerald-50 to-green-50 border-emerald-100',
+    },
+    {
+      label: 'Energy Generated',
+      icon: Zap,
+      unit: 'kWh',
+      parts: energyParts,
+      tone: 'text-lime-700',
+      bg: 'from-lime-50 to-teal-50 border-lime-100',
+    },
+  ], [co2Parts, energyParts]);
 
   return (
     <motion.section
-      variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-100px' }}
-      className="enterprise-dark-panel relative overflow-hidden rounded-[1.75rem] bg-[#0B1120] p-5 text-white shadow-[0_20px_60px_rgba(10,25,47,0.2)] sm:p-6 md:rounded-[2.5rem] md:p-8 lg:p-10"
+      variants={containerVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-80px' }}
+      className="relative overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-[#f7fbf5] p-5 text-[#083827] shadow-[0_18px_55px_rgba(6,78,59,0.12)] sm:p-6 md:p-8 print:break-inside-avoid"
     >
-      <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15)_0%,rgba(245,158,11,0)_70%)] blur-[100px]" />
-      <div className="pointer-events-none absolute -left-32 -bottom-32 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1)_0%,rgba(16,185,129,0)_70%)] blur-[100px]" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-lime-400" />
 
-      {/* TOP HEADER WITH WEATHER BUTTON */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+      <div className="relative z-10 mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Live Telemetry
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 shadow-sm">
+            <CircleDotDashed size={14} className="animate-spin text-emerald-500" />
+            Live Telemetry
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white">System Monitor</h2>
-          <p className="mt-2 text-sm font-medium text-slate-400">Enterprise-grade environment & health tracking.</p>
+          <h2 className="text-3xl font-black tracking-tight text-[#064e3b] md:text-4xl">System Monitor</h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-600">
+            Real-time solar, environment, learning continuity, and maintenance status for school infrastructure.
+          </p>
         </div>
 
-        {/* WEATHER TOGGLE BUTTON */}
-        <button 
-          onClick={() => setShowWeather(!showWeather)}
-          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-full text-xs font-bold transition-all active:scale-95"
-        >
-          <CloudSun size={16} className="text-[#f59e0b]" />
-          {showWeather ? 'Hide Environment' : 'View Environment'}
-          {showWeather ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        <div className="grid w-full grid-cols-2 gap-2 rounded-2xl border border-emerald-100 bg-white p-1.5 shadow-sm sm:w-auto">
+          {(Object.keys(SCHOOL_PROFILES) as MonitorSchoolKey[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleMonitorSchoolChange(key)}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black transition-all sm:min-w-40 ${
+                monitorSchool === key
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/10'
+                  : 'text-emerald-800 hover:bg-emerald-50'
+              }`}
+            >
+              {SCHOOL_PROFILES[key].tabLabel}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* WEATHER DROPDOWN / COLLAPSIBLE PANEL */}
-      <AnimatePresence>
-        {showWeather && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-            animate={{ height: 'auto', opacity: 1, marginBottom: 32 }}
-            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-            className="relative z-10 overflow-hidden"
-          >
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-inner backdrop-blur-md">
-              <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <CloudSun className="text-[#f59e0b]" size={20} />
-                  <p className="text-xs font-bold uppercase tracking-widest text-white">Live Weather Sensors</p>
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-[#0B1120] px-3 py-1.5 rounded-full border border-white/10">
-                  <MapPin size={10} className="text-emerald-400"/> 
-                  {/* Dynamic Location based on school selected */}
-                  {selectedSchool === 'all' ? 'Network Avg (All Sites)' : schoolMeta[selectedSchool as SchoolKey].location}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-y-6 gap-x-4">
-                <div className="flex flex-col items-center text-center gap-2">
-                  <ThermometerSun className="text-rose-400" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Temperature</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.temperature}°C</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <Sun className="text-amber-400" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Irradiance</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.irradiance} <span className="text-[10px]">W/m²</span></p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <Wind className="text-sky-300" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Wind Speed</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.windSpeed} <span className="text-[10px]">km/h</span></p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <Activity className="text-emerald-400" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">AQI Level</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.aqi} <span className="text-[10px] text-emerald-400">Good</span></p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <Droplets className="text-blue-400" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Humidity</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.humidity}%</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <Waves className="text-purple-400" size={24} />
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">UV Index</p>
-                    <p className="font-mono text-sm font-bold text-white">{envValues.uvIndex} <span className="text-[10px] text-orange-400">High</span></p>
-                  </div>
-                </div>
-              </div>
+      <div className="relative z-10 grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm xl:col-span-4">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Selected Institution</p>
+              <h3 className="mt-1 text-xl font-black text-[#064e3b]">{profile.name}</h3>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <School className="text-emerald-600" size={24} />
+          </div>
+          <div className="space-y-3 text-sm font-bold text-slate-600">
+            <p className="flex items-center gap-2"><MapPin size={16} className="text-emerald-500" /> {profile.location}</p>
+            <p className="flex items-center gap-2"><Server size={16} className="text-emerald-500" /> {profile.system}</p>
+            <p className="flex items-center gap-2"><BatteryCharging size={16} className="text-emerald-500" /> Battery Health: {profile.batteryHealth}%</p>
+          </div>
+          <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+            <div className="mb-2 flex items-center justify-between text-xs font-black uppercase tracking-widest text-emerald-700">
+              <span>Inverter Load</span>
+              <span>{profile.inverterLoad}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-white">
+              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" style={{ width: `${profile.inverterLoad}%` }} />
+            </div>
+          </div>
+        </motion.div>
 
-      <div className="relative z-10 grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-12 lg:gap-8">
-        
-        {/* --- LEFT PANEL: TERMINAL LOGS (Col Span 4) --- */}
-        <div className="space-y-6 lg:col-span-4 h-full flex flex-col">
-          <motion.div variants={itemVariants} className="flex-1 rounded-xl border border-[#10b981]/30 bg-[#022c22]/50 p-5 font-mono text-xs shadow-inner flex flex-col min-h-[200px]">
-             <div className="flex items-center justify-between gap-2 mb-4 border-b border-[#10b981]/20 pb-3">
-                <div className="flex items-center gap-2">
-                  <Terminal size={14} className="text-emerald-400"/>
-                  <span className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest">System Event Log</span>
-                </div>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"/>
-             </div>
-             <div className="space-y-3 flex-1 overflow-hidden">
-                {logs.map((log, idx) => (
-                  <p key={idx} className="text-emerald-300/80 flex gap-2">
-                    <span className="text-emerald-500">{`>`}</span> {log}
-                  </p>
-                ))}
-                <p className="text-emerald-400 animate-pulse">_</p>
-             </div>
-          </motion.div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:col-span-8">
+          {monitorCards.map((card) => (
+            <motion.div
+              variants={itemVariants}
+              key={card.label}
+              className={`rounded-2xl border bg-gradient-to-br ${card.bg} p-5 shadow-sm`}
+            >
+              <div className="mb-5 flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-600">{card.label}</p>
+                <card.icon size={24} className={card.tone} />
+              </div>
+              <div className="font-mono leading-none">
+                <span className={`text-4xl font-black tracking-tight md:text-5xl ${card.tone}`}>{card.parts.integer}</span>
+                <span className={`text-lg font-black md:text-xl ${card.tone}`}>.{card.parts.decimal}</span>
+                <span className="ml-2 text-xs font-black uppercase tracking-widest text-slate-500">{card.unit}</span>
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* --- RIGHT PANEL: METRICS & SCHOOL CARDS (Col Span 8) --- */}
-        <div className="space-y-6 lg:col-span-8">
-          
-          {/* Top 4 KPI Cards */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            {liveMetrics.map((stat) => (
-              <motion.div
-                variants={itemVariants} key={stat.label}
-                whileHover={{ scale: 1.05, y: -4, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm backdrop-blur-md flex flex-col justify-between"
-              >
-                <div className="mb-2 flex items-start justify-between">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
-                  <stat.icon className={stat.color} size={18} />
-                </div>
-                <AnimatePresence mode="popLayout">
-                  <motion.p
-                    key={liveCardValues[stat.metricKey]}
-                    initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                    className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-2"
-                  >
-                    {liveCardValues[stat.metricKey]} <span className="text-xs text-slate-400 font-bold">{stat.unit}</span>
-                  </motion.p>
-                </AnimatePresence>
-              </motion.div>
+        <motion.div variants={itemVariants} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm xl:col-span-4">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Env</p>
+              <h3 className="text-lg font-black text-[#064e3b]">Environment Monitor</h3>
+            </div>
+            <CloudSun className="text-emerald-600" size={24} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+              <ThermometerSun className="mx-auto mb-2 text-rose-500" size={20} />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Temp</p>
+              <p className="mt-1 font-mono text-lg font-black text-slate-800">{envValues.temperature.toFixed(1)}C</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+              <Droplets className="mx-auto mb-2 text-sky-500" size={20} />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Humidity</p>
+              <p className="mt-1 font-mono text-lg font-black text-slate-800">{envValues.humidity}%</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+              <Activity className="mx-auto mb-2 text-emerald-500" size={20} />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">AQI</p>
+              <p className="mt-1 font-mono text-lg font-black text-slate-800">{envValues.aqi}</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm xl:col-span-4">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Digital Learning Impact</p>
+              <h3 className="text-lg font-black text-[#064e3b]">Continuity Outcomes</h3>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Real-world outcomes powered by continuous energy and standardized setup.</p>
+            </div>
+            <GraduationCap className="shrink-0 text-emerald-600" size={24} />
+          </div>
+          <p className="font-mono text-5xl font-black leading-none text-emerald-700 md:text-6xl">{profile.activeHours} <span className="text-2xl">Hrs</span></p>
+          <p className="mt-3 text-sm font-black text-slate-600">
+            Daily Average: {profile.dailyAverageMins} Mins ({profile.dailyAverageMins / 60} Hrs)
+          </p>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className={`rounded-2xl border p-5 shadow-sm xl:col-span-4 ${statusTone}`}>
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Live Active Classes</p>
+              <h3 className="text-lg font-black">Smart Classroom Feed</h3>
+            </div>
+            <BookOpenCheck size={24} />
+          </div>
+          <p className="font-mono text-5xl font-black leading-none md:text-6xl">{activeClassValue}</p>
+          <p className="mt-3 text-sm font-bold">
+            {!now ? 'Checking classroom schedule...' : classesActive ? 'Classes are actively powered and online.' : offHours ? 'Outside active teaching hours.' : 'Class window opens at 11:00 AM.'}
+          </p>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm xl:col-span-8">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Maintenance & Alerts</p>
+              <h3 className="text-lg font-black text-[#064e3b]">Hardware Maintenance Queue</h3>
+            </div>
+            <Wrench className="text-amber-600" size={24} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {profile.alerts.map((alert) => (
+              <div key={alert} className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+                <p className="text-sm font-bold leading-snug text-amber-900">{alert}</p>
+              </div>
             ))}
           </div>
+        </motion.div>
 
-          {/* Deep School Metrics Cards */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {activeSchoolKeys.map((key) => {
-              const schoolKey = key as SchoolKey;
-              const school = schoolMeta[schoolKey];
-              const metrics = schoolMetrics[schoolKey];
-
-              return (
-                <motion.div variants={itemVariants} key={schoolKey} className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md relative overflow-hidden">
-                  
-                  {/* Subtle Background Icon */}
-                  <ShieldCheck className="absolute -right-6 -bottom-6 text-white/5" size={120} />
-
-                  <div className="mb-5 flex items-start justify-between gap-4 relative z-10">
-                    <div>
-                      <h4 className="font-extrabold text-white text-base">{school.name}</h4>
-                      <p className="mt-1 text-[11px] font-bold tracking-widest uppercase text-slate-400 flex items-center gap-1">
-                        <Server size={10}/> {school.system} • {school.location}
-                      </p>
-                    </div>
-                    <span className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-300">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm relative z-10">
-                    <div className="rounded-xl bg-[#081423]/50 border border-white/5 p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Current Load</p>
-                      <p className="mt-1 font-mono text-lg text-white font-bold">{metrics.loadPower.toFixed(1)} <span className="text-xs">kW</span></p>
-                    </div>
-                    <div className="rounded-xl bg-[#081423]/50 border border-white/5 p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Battery SOC</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-400" style={{ width: `${metrics.batterySoc}%` }}/>
-                        </div>
-                        <p className="font-mono text-emerald-300 font-bold">{metrics.batterySoc}%</p>
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-gradient-to-r from-[#f59e0b]/20 to-[#ea580c]/20 border border-[#f59e0b]/20 p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-orange-200">Yield Today</p>
-                      <p className="mt-1 font-mono text-lg text-orange-400 font-bold">{metrics.yieldToday.toFixed(1)} <span className="text-xs">kWh</span></p>
-                    </div>
-                    <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/20 p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-200">CO2 Avoided</p>
-                      <p className="mt-1 font-mono text-lg text-emerald-400 font-bold">{metrics.co2Offset.toFixed(1)} <span className="text-xs">kg</span></p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center relative z-10">
-                     <p className="text-[10px] text-slate-400 font-bold"><span className="text-white">Classrooms:</span> {school.classrooms.split(' ')[0]}</p>
-                     <p className="text-[10px] text-slate-400 font-bold"><span className="text-white">Uptime:</span> 99.9%</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+        <motion.div variants={itemVariants} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm xl:col-span-4">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Controls</p>
+              <h3 className="text-lg font-black text-[#064e3b]">Operational Checks</h3>
+            </div>
+            <MonitorCheck className="text-emerald-600" size={24} />
           </div>
+          <div className="space-y-3">
+            {['Telemetry sync', 'Classroom UPS', 'Sensor gateway'].map((item) => (
+              <div key={item} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                <span className="text-sm font-black text-emerald-900">{item}</span>
+                <CheckCircle2 size={18} className="text-emerald-600" />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
 
-        </div>
+      <div className="relative z-10 mt-5 flex flex-col gap-3 border-t border-emerald-100 pt-4 text-xs font-black text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.14)] animate-pulse" />
+          System Status: Online
+        </p>
+        <p className="flex items-center gap-2">
+          <CalendarClock size={14} className="text-emerald-600" />
+          Last Sync: {lastSync ? formatSyncTime(lastSync) : 'Syncing...'}
+        </p>
       </div>
     </motion.section>
   );

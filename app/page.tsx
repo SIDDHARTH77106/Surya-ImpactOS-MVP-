@@ -6,7 +6,6 @@ import KPICards from '@/app/components/dashboard/KPICards';
 import Institutions from '@/app/components/dashboard/Institutions';
 import Analytics from '@/app/components/dashboard/Analytics';
 import RealTimeMonitor from '@/app/components/dashboard/RealTimeMonitor';
-import LearningImpact from '@/app/components/dashboard/LearningImpact';
 import DigitalLearningReport from '@/app/components/dashboard/DigitalLearningReport';
 import CSRCalculator from '@/app/components/dashboard/CSRCalculator';
 import ReportPreview from '@/app/components/dashboard/ReportPreview';
@@ -70,7 +69,7 @@ export default function ImpactOSDashboard() {
           Includes RealTimeMonitor (Environment/Live Stats) and Analytics
         */}
         <div id="esg-report-export" className="space-y-8 sm:space-y-10 lg:space-y-12">
-          <RealTimeMonitor selectedSchool={selectedSchool} />
+          <RealTimeMonitor key={selectedSchool} selectedSchool={selectedSchool} />
         </div>
 
         {/* 
@@ -78,7 +77,6 @@ export default function ImpactOSDashboard() {
           Includes LearningImpact and DigitalLearningReport (The 6-Grid)
         */}
         <div id="school-report-export" className="space-y-8 sm:space-y-10 lg:space-y-12">
-          <LearningImpact />
           <DigitalLearningReport />
         </div>
 
