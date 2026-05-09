@@ -4,21 +4,14 @@ import React, { useState } from 'react';
 import { ArrowDownToLine, FileText, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DASHBOARD_DATA } from '../../constants/mockData';
-// 🚀 FIX: Import toJpeg instead of toPng
-import { toJpeg } from 'html-to-image'; 
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
-
-function reportTargetForTitle(title: string) {
-  const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('esg')) return 'esg-report-export';
-  if (lowerTitle.includes('school')) return 'school-report-export';
-  if (lowerTitle.includes('csr')) return 'csr-report-export';
-  return 'dashboard-content';
-}
 
 function filenameForTitle(title: string) {
   return title.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Surya_ImpactOS_Report';
 }
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function ReportPreview() {
   const reports = DASHBOARD_DATA.reports || [
@@ -32,103 +25,161 @@ export default function ReportPreview() {
   const handleDownloadClick = async (title: string) => {
     setDownloading(title);
 
-    const targetId = reportTargetForTitle(title);
-    let element = document.getElementById(targetId);
+    const dashboard = document.getElementById('dashboard-content');
 
-    if (!element) {
-      if (title.includes('School')) element = document.getElementById('school-report-export') || document.getElementById('digital-learning-report-export');
-      else element = document.getElementById('dashboard-content');
-    }
-
-    if (!element) {
-      alert(`⚠️ ${title} ka data dashboard par nahi mila!`);
+    if (!dashboard) {
+      alert(`${title} data is not available on the screen.`);
       setDownloading(null);
       return;
     }
 
+    const hiddenNodes = new Map<HTMLElement, string>();
+    let animationBlocker: HTMLStyleElement | null = null;
+
+    const hideNode = (node: HTMLElement | null) => {
+      if (!node || hiddenNodes.has(node)) return;
+
+      hiddenNodes.set(node, node.style.display);
+      node.style.display = 'none';
+    };
+
     try {
-      const style = document.createElement('style');
-      style.innerHTML = `
-        #${element.id}, #${element.id} * {
+      const normalizedTitle = title.toLowerCase();
+      const isSchoolReport = normalizedTitle.includes('school');
+      const isCSRReport = normalizedTitle.includes('csr');
+      const sectionIdsToHide = isSchoolReport
+        ? ['section-overview', 'section-csr']
+        : isCSRReport
+          ? ['section-overview', 'section-monitor', 'section-learning']
+          : ['section-learning', 'section-csr'];
+
+      sectionIdsToHide.forEach((id) => hideNode(document.getElementById(id)));
+
+      const reportPreview = document.getElementById('report-preview-section');
+      const reportPreviewWrapper = reportPreview?.parentElement;
+      hideNode(reportPreviewWrapper instanceof HTMLElement ? reportPreviewWrapper : reportPreview);
+
+      animationBlocker = document.createElement('style');
+      animationBlocker.setAttribute('data-pdf-animation-blocker', 'true');
+      animationBlocker.innerHTML = `
+        * {
           animation: none !important;
           transition: none !important;
-          opacity: 1 !important;
-          transform: none !important;
         }
       `;
-      document.head.appendChild(style);
+      document.head.appendChild(animationBlocker);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await wait(500);
 
-      // 🚀 SIZE REDUCTION: Use JPEG with compression quality
-      const dataUrl = await toJpeg(element, {
-        cacheBust: true,
-        backgroundColor: '#fcfdfa',
-        pixelRatio: 1.5, // Dropped slightly from 2.0 to save MBs, still very sharp
-        quality: 0.8, // Compress image by 20%
-        style: {
-          margin: '0', 
-          padding: '20px' 
-        }
+      const visibleBlocks = Array.from(dashboard.children).filter((child): child is HTMLElement => {
+        if (!(child instanceof HTMLElement)) return false;
+
+        const styles = window.getComputedStyle(child);
+        return styles.display !== 'none' && child.offsetHeight > 0;
       });
 
-      document.head.removeChild(style);
-
-      // 🚀 SIZE REDUCTION: Turn on PDF compression
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true, // Forces PDF size compression
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const headerHeight = 25;
-      pdf.setFillColor(252, 250, 248);
-      pdf.rect(0, 0, pdfWidth, headerHeight, 'F');
-
-      pdf.setTextColor(6, 78, 59);
-      pdf.setFontSize(18);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(title.toUpperCase(), pdfWidth / 2, 16, { align: 'center' });
-
-      pdf.setDrawColor(209, 250, 229);
-      pdf.setLineWidth(0.5);
-      pdf.line(10, 22, pdfWidth - 10, 22);
-
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const margin = 10;
-      
-      const availableWidth = pdfWidth - (margin * 2);
-      const availableHeight = pdfHeight - headerHeight - margin;
-
-      let finalImgWidth = availableWidth;
-      let finalImgHeight = (imgProps.height * availableWidth) / imgProps.width;
-
-      if (finalImgHeight > availableHeight) {
-        finalImgHeight = availableHeight;
-        finalImgWidth = (imgProps.width * availableHeight) / imgProps.height;
+      if (visibleBlocks.length === 0) {
+        throw new Error('No visible dashboard blocks found for this report.');
       }
 
-      const xOffset = (pdfWidth - finalImgWidth) / 2;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 10;
+      const marginTop = 10;
+      const marginBottom = 10;
+      const gap = 6;
+      const imgWidth = pdfWidth - marginX * 2;
+      let currentY = marginTop;
+      let imagesAdded = 0;
 
-      // 🚀 FIX: Insert as JPEG instead of PNG and use "FAST" compression alias
-      pdf.addImage(dataUrl, 'JPEG', xOffset, headerHeight, finalImgWidth, finalImgHeight, undefined, 'FAST');
-      
+      pdf.setFillColor(252, 250, 248);
+      pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+
+      for (const block of visibleBlocks) {
+        try {
+          const dataUrl = await toJpeg(block, {
+            cacheBust: true,
+            backgroundColor: '#fcfaf8',
+            pixelRatio: 1.5,
+            quality: 0.8,
+            style: {
+              margin: '0',
+            },
+          });
+
+          if (!dataUrl || dataUrl === 'data:,') {
+            continue;
+          }
+
+          const imgProps = pdf.getImageProperties(dataUrl);
+          const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+          if (currentY + imgHeight > pdfHeight - marginBottom && currentY !== marginTop) {
+            pdf.addPage();
+            pdf.setFillColor(252, 250, 248);
+            pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+            currentY = marginTop;
+          }
+
+          pdf.addImage(dataUrl, 'JPEG', marginX, currentY, imgWidth, imgHeight, undefined, 'FAST');
+          imagesAdded += 1;
+
+          const firstPageAvailableHeight = pdfHeight - marginBottom - currentY;
+
+          if (imgHeight <= firstPageAvailableHeight) {
+            currentY += imgHeight + gap;
+          } else {
+            const fullPageAvailableHeight = pdfHeight - marginTop - marginBottom;
+            let renderedHeight = firstPageAvailableHeight;
+
+            while (renderedHeight < imgHeight) {
+              pdf.addPage();
+              pdf.setFillColor(252, 250, 248);
+              pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+              pdf.addImage(dataUrl, 'JPEG', marginX, marginTop - renderedHeight, imgWidth, imgHeight, undefined, 'FAST');
+              renderedHeight += fullPageAvailableHeight;
+            }
+
+            const heightOnLastPage = imgHeight - (renderedHeight - fullPageAvailableHeight);
+            currentY = marginTop + Math.max(heightOnLastPage, 0) + gap;
+          }
+
+          if (currentY > pdfHeight - marginBottom) {
+            pdf.addPage();
+            pdf.setFillColor(252, 250, 248);
+            pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+            currentY = marginTop;
+          }
+        } catch (blockError) {
+          console.warn('Skipping PDF block that failed to render:', block, blockError);
+        }
+      }
+
+      if (imagesAdded === 0) {
+        throw new Error('All captured dashboard blocks were blank.');
+      }
+
       pdf.save(`${filenameForTitle(title)}.pdf`);
-
     } catch (error) {
       console.error('PDF Generation Failed:', error);
-      alert('PDF generation failed. Please check the console.');
+      alert('PDF generation failed. Check console for details.');
     } finally {
+      if (animationBlocker?.parentNode) {
+        animationBlocker.parentNode.removeChild(animationBlocker);
+      }
+
+      hiddenNodes.forEach((display, node) => {
+        node.style.display = display;
+      });
+
       setDownloading(null);
     }
   };
 
   return (
     <motion.section
+      id="report-preview-section"
       initial={{ opacity: 0, x: 40 }}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
@@ -163,9 +214,9 @@ export default function ReportPreview() {
                 </div>
                 <div>
                   <p className="text-base md:text-lg font-black text-[#0a192f] group-hover:text-[#ea580c]">
-                    {isDownloading ? 'Capturing Report...' : report.title}
+                    {isDownloading ? 'Structuring PDF...' : report.title}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">{report.date} • {report.type}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{report.date} - {report.type}</p>
                 </div>
               </div>
               <div className={`p-2 rounded-full ${isDownloading ? 'bg-orange-50 text-[#ea580c]' : 'bg-slate-50 text-slate-300 group-hover:bg-orange-50 group-hover:text-[#ea580c]'}`}>
