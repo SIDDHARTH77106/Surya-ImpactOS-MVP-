@@ -11,11 +11,17 @@ import jsPDF from 'jspdf';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+// 🚀 VERCEL FIX: TypeScript Interface add kiya gaya Custom Input ke liye
+interface CustomDateInputProps {
+  value?: string;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+}
+
 export default function Header() {
   const [isDownloading, setIsDownloading] = useState(false);
   
-  // Date Picker State: Default last 3 days set kiya hai
-  const [dateRange, setDateRange] = useState(() => {
+  // 🚀 VERCEL FIX: DateRange state ko properly type kiya gaya
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(() => {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - 3);
@@ -117,17 +123,19 @@ export default function Header() {
     }
   };
 
-  // Custom Input UI for Date Picker
-  const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
-    <button 
-      onClick={onClick} 
-      ref={ref}
-      className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 sm:px-5 sm:py-3 sm:text-sm transition hover:bg-emerald-100"
-    >
-      <Calendar size={18} className="text-emerald-600" /> 
-      {value || "Select Date Range"}
-    </button>
-  ));
+  // 🚀 VERCEL FIX: Added types <HTMLButtonElement, CustomDateInputProps> to forwardRef
+  const CustomDateInput = React.forwardRef<HTMLButtonElement, CustomDateInputProps>(
+    ({ value, onClick }, ref) => (
+      <button 
+        onClick={onClick} 
+        ref={ref}
+        className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 sm:px-5 sm:py-3 sm:text-sm transition hover:bg-emerald-100"
+      >
+        <Calendar size={18} className="text-emerald-600" /> 
+        {value || "Select Date Range"}
+      </button>
+    )
+  );
   CustomDateInput.displayName = 'CustomDateInput';
 
   return (
@@ -168,7 +176,7 @@ export default function Header() {
             selectsRange={true}
             startDate={startDate}
             endDate={endDate}
-            onChange={(update) => setDateRange(update)}
+            onChange={(update: [Date | null, Date | null]) => setDateRange(update)}
             dateFormat="MMM d, yyyy"
             customInput={<CustomDateInput />}
             maxDate={new Date()} // Future dates disable karne ke liye

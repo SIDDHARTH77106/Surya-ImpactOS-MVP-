@@ -66,7 +66,11 @@ export default function ImpactOSDashboard() {
 
         {/* 3. MONITOR SECTION (ESG aur School Report ke liye) */}
         <div id="section-monitor" className="mt-8 sm:mt-10 lg:mt-12">
-          <RealTimeMonitor key={selectedSchool} selectedSchool={selectedSchool} />
+          {/* 🚀 VERCEL TYPE ERROR FIX: Handle 'all' case safely */}
+          <RealTimeMonitor 
+            key={selectedSchool} 
+            selectedSchool={selectedSchool === 'all' ? 'government' : (selectedSchool as any)} 
+          />
         </div>
 
         {/* 4. LEARNING SECTION (Sirf School Report ke liye) */}

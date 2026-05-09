@@ -61,15 +61,20 @@ export default function ReportPreview() {
 
       animationBlocker = document.createElement('style');
       animationBlocker.setAttribute('data-pdf-animation-blocker', 'true');
+      
+      // 🚀 MAGIC FIX FOR WHITE GAP: Forced opacity to 1 and disabled transform 
+      // so Framer Motion doesn't keep off-screen cards invisible during capture.
       animationBlocker.innerHTML = `
         * {
-          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
           transition: none !important;
+          animation: none !important;
         }
       `;
       document.head.appendChild(animationBlocker);
 
-      await wait(500);
+      await wait(1000);
 
       const visibleBlocks = Array.from(dashboard.children).filter((child): child is HTMLElement => {
         if (!(child instanceof HTMLElement)) return false;
@@ -126,22 +131,22 @@ export default function ReportPreview() {
           imagesAdded += 1;
 
           const firstPageAvailableHeight = pdfHeight - marginBottom - currentY;
+          const fullPageAvailableHeight = pdfHeight - marginTop - marginBottom;
+          let heightLeft = imgHeight - firstPageAvailableHeight;
 
-          if (imgHeight <= firstPageAvailableHeight) {
+          if (heightLeft <= 0) {
             currentY += imgHeight + gap;
           } else {
-            const fullPageAvailableHeight = pdfHeight - marginTop - marginBottom;
-            let renderedHeight = firstPageAvailableHeight;
-
-            while (renderedHeight < imgHeight) {
+            while (heightLeft > 0) {
+              const renderedHeight = imgHeight - heightLeft;
               pdf.addPage();
               pdf.setFillColor(252, 250, 248);
               pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
               pdf.addImage(dataUrl, 'JPEG', marginX, marginTop - renderedHeight, imgWidth, imgHeight, undefined, 'FAST');
-              renderedHeight += fullPageAvailableHeight;
+              heightLeft -= fullPageAvailableHeight;
             }
 
-            const heightOnLastPage = imgHeight - (renderedHeight - fullPageAvailableHeight);
+            const heightOnLastPage = fullPageAvailableHeight + heightLeft;
             currentY = marginTop + Math.max(heightOnLastPage, 0) + gap;
           }
 
@@ -216,7 +221,8 @@ export default function ReportPreview() {
                   <p className="text-base md:text-lg font-black text-[#0a192f] group-hover:text-[#ea580c]">
                     {isDownloading ? 'Structuring PDF...' : report.title}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">{report.date} - {report.type}</p>
+                  {/* 🚀 VERCEL BUILD FIX: Used proper HTML entity &bull; instead of a raw character */}
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{report.date} &bull; {report.type}</p>
                 </div>
               </div>
               <div className={`p-2 rounded-full ${isDownloading ? 'bg-orange-50 text-[#ea580c]' : 'bg-slate-50 text-slate-300 group-hover:bg-orange-50 group-hover:text-[#ea580c]'}`}>
