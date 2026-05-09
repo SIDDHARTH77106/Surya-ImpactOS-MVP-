@@ -1,8 +1,8 @@
-export type SchoolFilter = 'all' | 'surana' | 'jeevanDhara';
+export type SchoolFilter = 'all' | 'government' | 'jeevanDhara';
 
 export const SCHOOL_OPTIONS: { key: SchoolFilter; label: string }[] = [
   { key: 'all', label: 'All Institutions' },
-  { key: 'surana', label: 'Govt. Primary School Surana' },
+  { key: 'government', label: 'Govt. Primary School Surana' },
   { key: 'jeevanDhara', label: 'Jeevan Dhara Welfare Society' },
 ];
 
@@ -21,7 +21,7 @@ export const SCHOOL_DATA = {
       { name: 'Jul', gen: 420, cons: 400 }, { name: 'Aug', gen: 500, cons: 420 },
     ],
   },
-  surana: {
+  government: {
     label: 'Govt. Primary School Surana',
     kpis: [
       { label: "Total Institutions", value: 1, suffix: "", icon: "School" },
@@ -59,7 +59,7 @@ export const DASHBOARD_DATA = {
   kpis: SCHOOL_DATA.all.kpis,
   institutions: [
     {
-      key: "surana",
+      key: "government",
       name: "Govt. Primary School Surana",
       setup: "5kW Hybrid", location: "Haryana",
       details: "2 classrooms on solar", impact: "2 hrs regular digital learning", status: "Active"

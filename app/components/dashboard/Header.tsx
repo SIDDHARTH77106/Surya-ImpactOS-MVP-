@@ -4,42 +4,24 @@ import Image from 'next/image';
 import { Calendar, Download, Loader2 } from 'lucide-react';
 import { DASHBOARD_DATA } from '../../constants/mockData';
 import { motion } from 'framer-motion';
-// 🚀 FIX: Import toJpeg
 import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 
-function getLastThreeDaysRange(date: Date) {
-  const endDate = new Date(date);
-  const startDate = new Date(endDate);
-  startDate.setDate(endDate.getDate() - 3);
-
-  const sameYear = startDate.getFullYear() === endDate.getFullYear();
-  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
-  const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short' });
-  const fullFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  if (sameMonth) {
-    return `${monthFormatter.format(startDate)} ${startDate.getDate()} - ${monthFormatter.format(endDate)} ${endDate.getDate()}, ${endDate.getFullYear()}`;
-  }
-
-  if (sameYear) {
-    return `${monthFormatter.format(startDate)} ${startDate.getDate()} - ${monthFormatter.format(endDate)} ${endDate.getDate()}, ${endDate.getFullYear()}`;
-  }
-
-  return `${fullFormatter.format(startDate)} - ${fullFormatter.format(endDate)}`;
-}
+// Naya Import: DatePicker aur uski CSS
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function Header() {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [lastThreeDaysRange, setLastThreeDaysRange] = useState('Loading range...');
-
-  React.useEffect(() => {
-    const initializeDateRange = window.setTimeout(() => {
-      setLastThreeDaysRange(getLastThreeDaysRange(new Date()));
-    }, 0);
-
-    return () => window.clearTimeout(initializeDateRange);
-  }, []);
+  
+  // Date Picker State: Default last 3 days set kiya hai
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 3);
+    return [start, end];
+  });
+  const [startDate, endDate] = dateRange;
 
   const downloadPDF = async () => {
     setIsDownloading(true);
@@ -67,7 +49,6 @@ export default function Header() {
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // 🚀 SIZE REDUCTION
       const dataUrl = await toJpeg(element, {
         cacheBust: true,
         backgroundColor: '#fcfdfa',
@@ -81,12 +62,11 @@ export default function Header() {
 
       document.head.removeChild(style);
 
-      // 🚀 SIZE REDUCTION
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: true, // Compress PDF
+        compress: true, 
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -96,10 +76,10 @@ export default function Header() {
       pdf.setFillColor(252, 250, 248);
       pdf.rect(0, 0, pdfWidth, headerHeight, 'F');
 
-      pdf.setTextColor(6, 78, 59);
+      pdf.setTextColor(6, 78, 59); // Emerald Green Text
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('SURYA IMPACTOS PERFORMANCE REPORT', pdfWidth / 2, 16, { align: 'center' });
+      pdf.text('SCHOOL IMPACT PERFORMANCE REPORT', pdfWidth / 2, 16, { align: 'center' }); // Text updated
 
       pdf.setDrawColor(209, 250, 229);
       pdf.setLineWidth(0.5);
@@ -121,10 +101,13 @@ export default function Header() {
 
       const xOffset = (pdfWidth - finalImgWidth) / 2;
 
-      // 🚀 Insert as JPEG
       pdf.addImage(dataUrl, 'JPEG', xOffset, headerHeight, finalImgWidth, finalImgHeight, undefined, 'FAST');
       
-      pdf.save(`Surya_ImpactOS_ESG_Report.pdf`);
+      // Dynamic PDF Name logic
+      const formattedStartDate = startDate ? startDate.toLocaleDateString('en-GB').replace(/\//g, '-') : 'Start';
+      const formattedEndDate = endDate ? endDate.toLocaleDateString('en-GB').replace(/\//g, '-') : 'End';
+      
+      pdf.save(`Surya_Impact_Report_${formattedStartDate}_to_${formattedEndDate}.pdf`);
 
     } catch (error) {
       console.error('Print failed:', error);
@@ -133,6 +116,19 @@ export default function Header() {
       setIsDownloading(false);
     }
   };
+
+  // Custom Input UI for Date Picker
+  const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+    <button 
+      onClick={onClick} 
+      ref={ref}
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 sm:px-5 sm:py-3 sm:text-sm transition hover:bg-emerald-100"
+    >
+      <Calendar size={18} className="text-emerald-600" /> 
+      {value || "Select Date Range"}
+    </button>
+  ));
+  CustomDateInput.displayName = 'CustomDateInput';
 
   return (
     <motion.header
@@ -164,10 +160,20 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="mt-2 flex w-full flex-wrap gap-3 md:mt-0 md:w-auto md:gap-4">
-        <button className="flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 sm:px-5 sm:py-3 sm:text-sm md:flex-none">
-          <Calendar size={18} className="text-emerald-600" /> Last 3 Days: {lastThreeDaysRange}
-        </button>
+      <div className="mt-2 flex w-full flex-col sm:flex-row gap-3 md:mt-0 md:w-auto md:gap-4">
+        
+        {/* Working Interactive Date Picker */}
+        <div className="flex-1 md:flex-none">
+          <DatePicker
+            selectsRange={true}
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(update) => setDateRange(update)}
+            dateFormat="MMM d, yyyy"
+            customInput={<CustomDateInput />}
+            maxDate={new Date()} // Future dates disable karne ke liye
+          />
+        </div>
 
         <button
           onClick={!isDownloading ? downloadPDF : undefined}

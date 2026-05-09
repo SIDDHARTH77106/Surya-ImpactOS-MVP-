@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BatteryCharging,
   BookOpen,
@@ -117,6 +117,18 @@ function ReportCard({
 }
 
 export default function DigitalLearningReport() {
+  const [dateText, setDateText] = useState("Loading...");
+
+  // Dynamic Date Logic (Same as header: Last 3 Days)
+  useEffect(() => {
+    const today = new Date();
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(today.getDate() - 3);
+    
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    setDateText(`${threeDaysAgo.toLocaleDateString('en-US', options)} - ${today.toLocaleDateString('en-US', options)}`);
+  }, []);
+
   const isMounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -131,9 +143,11 @@ export default function DigitalLearningReport() {
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_68%)]" />
       <div className="relative space-y-6 md:space-y-8">
+        
+        {/* UPDATED HEADER: Dynamic Date aur Naya Title */}
         <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-[#ea580c]">CSR ESG REPORT</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-[#ea580c]">SCHOOL IMPACT ANALYTICS</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-[#0a192f] md:text-4xl">
               DIGITAL LEARNING UPKEEP REPORT
             </h2>
@@ -142,7 +156,7 @@ export default function DigitalLearningReport() {
             </p>
           </div>
           <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-[#9a3412]">
-            Report Period: May 2024 - May 2025
+            Report Period: {dateText}
           </div>
         </div>
 
@@ -295,7 +309,6 @@ export default function DigitalLearningReport() {
             <div className="mt-5 rounded-[1.5rem] bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-[#0a192f]">Solar Generation vs Consumption (kWh)</p>
-                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Placeholder</span>
               </div>
               <div className="mt-4 w-full h-[208px] min-h-[208px] relative">
                 {isMounted ? (
