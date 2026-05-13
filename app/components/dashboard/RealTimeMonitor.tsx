@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Activity,
   AlertTriangle,
   BatteryCharging,
   CalendarClock,
   CheckCircle2,
   CircleDotDashed,
   CloudSun,
-  Droplets,
   MapPin,
-  MonitorCheck,
   School,
   Server,
   ThermometerSun,
@@ -134,12 +131,9 @@ export default function RealTimeMonitor({ selectedSchool = 'government' }: { sel
 
   // Real-time Fluctuation Logic
   useEffect(() => {
-    const hydratedTime = new Date();
-    setNow(hydratedTime);
-    setLastSync(hydratedTime);
-
-    const timer = window.setInterval(() => {
+    const syncTelemetry = () => {
       const profile = SCHOOL_PROFILES[monitorSchool];
+      const syncTime = new Date();
 
       setTelemetry((prev) => ({
         co2Offset: Number(clamp(prev.co2Offset + (Math.random() - 0.35) * 0.06, profile.co2Offset - 0.12, profile.co2Offset + 0.42).toFixed(2)),
@@ -152,11 +146,17 @@ export default function RealTimeMonitor({ selectedSchool = 'government' }: { sel
         aqi: Math.round(clamp(prev.aqi + (Math.random() - 0.5) * 3, profile.aqi - 10, profile.aqi + 12)),
       }));
 
-      setNow(new Date());
-      setLastSync(new Date());
-    }, 2000);
+      setNow(syncTime);
+      setLastSync(syncTime);
+    };
 
-    return () => window.clearInterval(timer);
+    const initialTimer = window.setTimeout(syncTelemetry, 0);
+    const timer = window.setInterval(syncTelemetry, 2000);
+
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(timer);
+    };
   }, [monitorSchool]);
 
   const profile = SCHOOL_PROFILES[monitorSchool];

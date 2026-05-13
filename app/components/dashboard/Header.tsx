@@ -17,6 +17,20 @@ interface CustomDateInputProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
+const CustomDateInput = React.forwardRef<HTMLButtonElement, CustomDateInputProps>(
+  ({ value, onClick }, ref) => (
+    <button
+      onClick={onClick}
+      ref={ref}
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 sm:px-5 sm:py-3 sm:text-sm transition hover:bg-emerald-100"
+    >
+      <Calendar size={18} className="text-emerald-600" />
+      {value || "Select Date Range"}
+    </button>
+  )
+);
+CustomDateInput.displayName = 'CustomDateInput';
+
 export default function Header() {
   const [isDownloading, setIsDownloading] = useState(false);
   
@@ -124,20 +138,6 @@ export default function Header() {
   };
 
   // 🚀 VERCEL FIX: Added types <HTMLButtonElement, CustomDateInputProps> to forwardRef
-  const CustomDateInput = React.forwardRef<HTMLButtonElement, CustomDateInputProps>(
-    ({ value, onClick }, ref) => (
-      <button 
-        onClick={onClick} 
-        ref={ref}
-        className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 sm:px-5 sm:py-3 sm:text-sm transition hover:bg-emerald-100"
-      >
-        <Calendar size={18} className="text-emerald-600" /> 
-        {value || "Select Date Range"}
-      </button>
-    )
-  );
-  CustomDateInput.displayName = 'CustomDateInput';
-
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}

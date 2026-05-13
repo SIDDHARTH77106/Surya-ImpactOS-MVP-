@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   BatteryCharging,
   BookOpen,
@@ -117,23 +117,23 @@ function ReportCard({
 }
 
 export default function DigitalLearningReport() {
-  const [dateText, setDateText] = useState("Loading...");
-
-  // Dynamic Date Logic (Same as header: Last 3 Days)
-  useEffect(() => {
-    const today = new Date();
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(today.getDate() - 3);
-    
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    setDateText(`${threeDaysAgo.toLocaleDateString('en-US', options)} - ${today.toLocaleDateString('en-US', options)}`);
-  }, []);
-
   const isMounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
+  const dateText = React.useMemo(() => {
+    if (!isMounted) {
+      return "Loading...";
+    }
+
+    const today = new Date();
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(today.getDate() - 3);
+
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return `${threeDaysAgo.toLocaleDateString('en-US', options)} - ${today.toLocaleDateString('en-US', options)}`;
+  }, [isMounted]);
 
   return (
     <section
