@@ -20,7 +20,7 @@ export default function ImpactOSDashboard() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fcfaf8]">
-      <SolarBackground className="z-0 opacity-[0.05]" />
+      <SolarBackground />
 
       <div
         id="dashboard-content"

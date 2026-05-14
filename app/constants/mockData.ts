@@ -12,7 +12,7 @@ export const SCHOOL_DATA = {
     kpis: [
       { label: "Total Institutions", value: 2, suffix: "", icon: "School" },
       { label: "Total Capacity", value: 11, suffix: " kW", icon: "Zap" },
-      { label: "Students Impacted", value: 124350, suffix: "+", icon: "Users" },
+      { label: "Students Impacted", value: 680, suffix: "+", icon: "Users" },
       { label: "CO2 Avoided", value: 12.6, suffix: " Tons", icon: "Leaf" },
       { label: "Avg Uptime", value: 99.2, suffix: "%", icon: "Activity" },
     ],
@@ -26,7 +26,7 @@ export const SCHOOL_DATA = {
     kpis: [
       { label: "Total Institutions", value: 1, suffix: "", icon: "School" },
       { label: "Total Capacity", value: 5, suffix: " kW", icon: "Zap" },
-      { label: "Students Impacted", value: 56523, suffix: "+", icon: "Users" },
+      { label: "Students Impacted", value: 296, suffix: "+", icon: "Users" },
       { label: "CO2 Avoided", value: 5.8, suffix: " Tons", icon: "Leaf" },
       { label: "Avg Uptime", value: 99.4, suffix: "%", icon: "Activity" },
     ],
@@ -40,7 +40,7 @@ export const SCHOOL_DATA = {
     kpis: [
       { label: "Total Institutions", value: 1, suffix: "", icon: "School" },
       { label: "Total Capacity", value: 6, suffix: " kW", icon: "Zap" },
-      { label: "Students Impacted", value: 67827, suffix: "+", icon: "Users" },
+      { label: "Students Impacted", value: 384, suffix: "+", icon: "Users" },
       { label: "CO2 Avoided", value: 6.8, suffix: " Tons", icon: "Leaf" },
       { label: "Avg Uptime", value: 99.0, suffix: "%", icon: "Activity" },
     ],

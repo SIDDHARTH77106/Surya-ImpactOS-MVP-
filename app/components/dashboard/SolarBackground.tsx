@@ -29,7 +29,11 @@ const particles: EnergyParticle[] = [
 
 export default function SolarBackground({ className = "" }: SolarBackgroundProps) {
   return (
-    <div aria-hidden="true" className={`pointer-events-none fixed inset-0 overflow-hidden ${className}`}>
+    <div
+      aria-hidden="true"
+      className={`fixed inset-0 overflow-hidden ${className}`}
+      style={{ opacity: 0.05, position: "fixed", zIndex: 0, pointerEvents: "none" }}
+    >
       <motion.svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full" initial={false}>
         <defs>
           <linearGradient id="solar-wave-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
