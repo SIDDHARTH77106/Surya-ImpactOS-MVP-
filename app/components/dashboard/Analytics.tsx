@@ -1,18 +1,34 @@
 "use client";
 import React from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { SCHOOL_DATA, SchoolFilter } from '../../constants/mockData';
+import { SchoolFilter } from '../../constants/mockData';
 import { motion } from 'framer-motion';
+import { getMonthlyGenerationTotal, getPortfolioMonthlyGenerationTotal } from '@/app/constants/solarSchedule';
 
 const emptySubscribe = () => () => {};
 const chartInitialDimension = { width: 1, height: 1 };
 
 type AnalyticsProps = {
   selectedSchool: SchoolFilter;
+  simulatedDate: string;
 };
 
-export default function Analytics({ selectedSchool }: AnalyticsProps) {
-  const chartData = SCHOOL_DATA[selectedSchool].chartData;
+function dateForMonthOffset(date: string, offset: number) {
+  const base = new Date(`${date}T12:00:00`);
+  const shifted = new Date(base.getFullYear(), base.getMonth() + offset, 1, 12);
+  return `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export default function Analytics({ selectedSchool, simulatedDate }: AnalyticsProps) {
+  const chartData = React.useMemo(() => [-1, 0, 1, 2].map((offset) => {
+    const monthDate = dateForMonthOffset(simulatedDate, offset);
+    const monthLabel = new Intl.DateTimeFormat('en-IN', { month: 'short', year: '2-digit' }).format(new Date(`${monthDate}T12:00:00`));
+    const generation = selectedSchool === 'all'
+      ? getPortfolioMonthlyGenerationTotal(monthDate)
+      : getMonthlyGenerationTotal(selectedSchool, monthDate);
+
+    return { name: monthLabel, gen: generation, cons: null };
+  }), [selectedSchool, simulatedDate]);
 
   const isMounted = React.useSyncExternalStore(
     emptySubscribe,
@@ -31,8 +47,8 @@ export default function Analytics({ selectedSchool }: AnalyticsProps) {
       <div className="absolute -top-20 -right-20 w-64 h-64 bg-orange-50/50 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
       <div className="mb-5 md:mb-8 relative z-10">
-        <h4 className="text-xl font-extrabold text-[#0a192f] tracking-tight">Solar Gen vs Consumption</h4>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Measured in kWh</p>
+        <h4 className="text-xl font-extrabold text-[#0a192f] tracking-tight">Solar Generation vs Consumption</h4>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Monthly simulated generation · kWh · consumption not modelled</p>
       </div>
       
       {/* Keep a strict chart box so Recharts never measures a zero-height parent during animation. */}
@@ -74,12 +90,13 @@ export default function Analytics({ selectedSchool }: AnalyticsProps) {
                   color: '#0a192f',
                   padding: '12px 16px'
                 }}
+                formatter={(value, name) => value === null ? ['Not modelled', String(name)] : [`${Number(value).toFixed(2)} kWh`, String(name)]}
               />
 
               <Area
                 type="monotone"
                 dataKey="gen"
-                name="Generation"
+                name="Estimated Generation"
                 stroke="#f59e0b"
                 fillOpacity={1}
                 fill="url(#colorGen)"
@@ -89,7 +106,7 @@ export default function Analytics({ selectedSchool }: AnalyticsProps) {
               <Area
                 type="monotone"
                 dataKey="cons"
-                name="Consumption"
+                name="Consumption (not modelled)"
                 stroke="#94a3b8"
                 fill="transparent"
                 strokeDasharray="6 6"

@@ -5,6 +5,13 @@ import { ArrowDownToLine, FileText, Loader2, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import { DASHBOARD_DATA, SCHOOL_DATA, SCHOOL_OPTIONS, SchoolFilter } from "../../constants/mockData";
+import {
+  getEstimatedDailyGeneration,
+  getMonthlyGenerationTotal,
+  getOutageDurationHours,
+  PROJECTS,
+  SIMULATION_ASSUMPTIONS,
+} from "../../constants/solarSchedule";
 
 type InstitutionSchool = Exclude<SchoolFilter, "all">;
 
@@ -22,38 +29,29 @@ type EnvironmentStat = {
 };
 
 type ReportSchoolProfile = {
-  institution: string;
-  location: string;
-  system: string;
   activeHours: number;
   dailyAverageMins: number;
   uptime: string;
   batteryHealth: number;
   inverterLoad: number;
-  energyGenerated: number;
-  co2Offset: number;
   environment: EnvironmentStat[];
   alerts: string[];
 };
 
 type ReportPreviewProps = {
   selectedSchool?: InstitutionSchool | "all";
+  simulatedDate: string;
 };
 
 const schoolOptions = SCHOOL_OPTIONS.filter((option): option is { key: InstitutionSchool; label: string } => option.key !== "all");
 
 const schoolProfiles: Record<InstitutionSchool, ReportSchoolProfile> = {
   government: {
-    institution: "Govt. Primary School Surana",
-    location: "Surana, Haryana",
-    system: "5kW Hybrid Solar Lab",
     activeHours: 400,
     dailyAverageMins: 120,
     uptime: "99.4%",
     batteryHealth: 91,
     inverterLoad: 68,
-    energyGenerated: 184.62,
-    co2Offset: 5.84,
     environment: [
       { label: "Temperature", value: "31.8 C", status: "Normal" },
       { label: "Humidity", value: "46%", status: "Stable" },
@@ -65,16 +63,11 @@ const schoolProfiles: Record<InstitutionSchool, ReportSchoolProfile> = {
     ],
   },
   jeevanDhara: {
-    institution: "Jeevan Dhara Welfare Society",
-    location: "Ghaziabad, Uttar Pradesh",
-    system: "6kW Hybrid Solar Lab",
     activeHours: 380,
     dailyAverageMins: 90,
     uptime: "99.0%",
     batteryHealth: 87,
     inverterLoad: 74,
-    energyGenerated: 216.48,
-    co2Offset: 6.76,
     environment: [
       { label: "Temperature", value: "32.6 C", status: "Normal" },
       { label: "Humidity", value: "51%", status: "Stable" },
@@ -109,10 +102,14 @@ async function loadLogoDataUrl(): Promise<string | null> {
   }
 }
 
-function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoDataUrl: string | null) {
+function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulatedDate: string, logoDataUrl: string | null) {
   const profile = schoolProfiles[schoolKey];
+  const project = PROJECTS[schoolKey];
   const schoolData = SCHOOL_DATA[schoolKey];
   const institution = DASHBOARD_DATA.institutions.find((item) => item.key === schoolKey);
+  const dailyGeneration = getEstimatedDailyGeneration(schoolKey, simulatedDate);
+  const monthlyGeneration = getMonthlyGenerationTotal(schoolKey, simulatedDate);
+  const monthlyCo2Kg = monthlyGeneration * SIMULATION_ASSUMPTIONS.co2KgPerKwh;
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -188,9 +185,9 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoData
     pdf.roundedRect(marginX, y, contentWidth, boxHeight, 3, 3, "FD"); // Rounded Corners
 
     const colWidth = contentWidth / 3;
-    labelValue("Institution", profile.institution, marginX, y, colWidth);
-    labelValue("Location", profile.location, marginX + colWidth, y, colWidth);
-    labelValue("System", profile.system, marginX + colWidth * 2, y, colWidth);
+    labelValue("Institution", project.name, marginX, y, colWidth);
+    labelValue("Location", project.location, marginX + colWidth, y, colWidth);
+    labelValue("System", `${project.capacityKw} kW Hybrid Solar`, marginX + colWidth * 2, y, colWidth);
 
     pdf.setDrawColor(226, 232, 240);
     pdf.line(marginX + colWidth, y + 4, marginX + colWidth, y + boxHeight - 4);
@@ -204,7 +201,7 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoData
     const columns = 3;
     const cardWidth = (contentWidth - cardGap * 2) / 3;
 
-    let startY = y;
+    const startY = y;
     ensureSpace(cardHeight + 4);
 
     schoolData.kpis.forEach((kpi, index) => {
@@ -337,10 +334,19 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoData
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
   pdf.setTextColor(100, 116, 139);
-  pdf.text(`Detailed analytics export generated for ${profile.institution}`, marginX, y);
+  pdf.text(`Historical report metadata: ${report.date}. Current simulation reference is included below.`, marginX, y, { maxWidth: contentWidth });
   y += 12;
 
   drawSummary();
+
+  drawTable("Current simulated schedule reference", ["Metric", "Value", "Status"], [
+    ["Simulated date", simulatedDate, "Deterministic demo"],
+    ["Installed capacity", `${project.capacityKw} kW`, "Configured project value"],
+    ["Estimated daily generation", `${dailyGeneration.toFixed(2)} kWh`, "Schedule-derived"],
+    ["Estimated monthly generation", `${monthlyGeneration.toFixed(2)} kWh`, "All days in selected month"],
+    ["Simulated grid outage", `${getOutageDurationHours(schoolKey)} hours/day`, "Separate from solar generation"],
+    ["Estimated CO2 avoided", `${monthlyCo2Kg.toFixed(1)} kg/month`, "Demo factor only"],
+  ]);
 
   const isESG = report.title.toLowerCase().includes("esg");
   const isSchool = report.title.toLowerCase().includes("school");
@@ -348,13 +354,11 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoData
 
   // 🚀 DYNAMIC CONTENT ROUTING (Yehi feature missing tha!)
   if (isESG) {
-    drawTable("Energy Performance Tracking", ["Metric", "Value", "Status"], [
-      ["Energy Generated", `${profile.energyGenerated.toFixed(2)} kWh`, "Optimal"],
-      ["CO2 Offset", `${profile.co2Offset.toFixed(2)} tons`, "Tracked"],
+    drawTable("Demo system profile", ["Metric", "Value", "Status"], [
       ["Battery Health", `${profile.batteryHealth}%`, "Monitored"],
       ["Inverter Load", `${profile.inverterLoad}%`, "Within limits"],
     ]);
-    drawTable("Live Environment Sensors", ["Sensor Type", "Current Reading", "System Status"], 
+    drawTable("Demo environment profile", ["Sensor Type", "Demo Reading", "System Status"],
       profile.environment.map((item) => [item.label, item.value, item.status])
     );
     drawAlertCards();
@@ -397,10 +401,10 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, logoData
     pdf.text(`Page ${pageNumber} of ${totalPages}`, pageWidth - marginX, pageHeight - 10, { align: "right" });
   }
 
-  pdf.save(`${filenameForTitle(report.title, profile.institution)}.pdf`);
+  pdf.save(`${filenameForTitle(report.title, project.name)}.pdf`);
 }
 
-export default function ReportPreview({ selectedSchool = "government" }: ReportPreviewProps) {
+export default function ReportPreview({ selectedSchool = "government", simulatedDate }: ReportPreviewProps) {
   const reports = useMemo<ReportItem[]>(
     () =>
       DASHBOARD_DATA.reports || [
@@ -421,7 +425,7 @@ export default function ReportPreview({ selectedSchool = "government" }: ReportP
 
     try {
       const logoDataUrl = await loadLogoDataUrl();
-      addReportPdf(report, reportSchool, logoDataUrl);
+      addReportPdf(report, reportSchool, simulatedDate, logoDataUrl);
     } catch (error) {
       console.error("PDF generation failed:", error);
       alert("PDF generation failed. Check console for details.");
@@ -445,7 +449,7 @@ export default function ReportPreview({ selectedSchool = "government" }: ReportP
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-[#0a192f] md:text-3xl">Report Repository</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Downloads will include only {selectedLabel}.
+            Historical report periods are retained; downloads for {selectedLabel} include a schedule-derived demo reference for {simulatedDate}.
           </p>
         </div>
 

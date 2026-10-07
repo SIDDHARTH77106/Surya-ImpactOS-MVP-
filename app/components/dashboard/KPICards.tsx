@@ -21,7 +21,7 @@ export default function KPICards({ selectedSchool }: KPICardsProps) {
         return { icon: <Zap size={22} className="text-[#ea580c]"/>, bg: "bg-orange-50/80", accent: "from-[#f59e0b] to-[#ea580c]" };
       case "Students Impacted": 
         return { icon: <Users size={22} className="text-purple-600"/>, bg: "bg-purple-50/80", accent: "from-purple-400 to-purple-600" };
-      case "CO2 Avoided": 
+      case "Historic CO2 Avoided":
         return { icon: <Leaf size={22} className="text-[#10b981]"/>, bg: "bg-emerald-50/80", accent: "from-emerald-400 to-emerald-600" };
       default: 
         return { icon: <Activity size={22} className="text-rose-600"/>, bg: "bg-rose-50/80", accent: "from-rose-400 to-rose-600" };
@@ -29,7 +29,9 @@ export default function KPICards({ selectedSchool }: KPICardsProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+    <div>
+      <p className="mb-3 text-xs font-bold text-slate-400">Portfolio KPIs include historical impact metrics; current energy estimates are shown in the schedule simulation below.</p>
+      <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-5">
       {kpis.map((kpi, idx) => {
         const theme = getCardTheme(kpi.label);
         
@@ -73,6 +75,7 @@ export default function KPICards({ selectedSchool }: KPICardsProps) {
           </motion.div>
         );
       })}
+      </div>
     </div>
   );
 }

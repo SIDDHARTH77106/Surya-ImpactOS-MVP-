@@ -122,18 +122,7 @@ export default function DigitalLearningReport() {
     () => true,
     () => false
   );
-  const dateText = React.useMemo(() => {
-    if (!isMounted) {
-      return "Loading...";
-    }
-
-    const today = new Date();
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(today.getDate() - 3);
-
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    return `${threeDaysAgo.toLocaleDateString('en-US', options)} - ${today.toLocaleDateString('en-US', options)}`;
-  }, [isMounted]);
+  const historicalPeriod = isMounted ? "FY 2024–25" : "Loading...";
 
   return (
     <section
@@ -147,7 +136,7 @@ export default function DigitalLearningReport() {
         {/* UPDATED HEADER: Dynamic Date aur Naya Title */}
         <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-[#ea580c]">SCHOOL IMPACT ANALYTICS</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-[#ea580c]">HISTORICAL PORTFOLIO DEMO · NOT LIVE TELEMETRY</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-[#0a192f] md:text-4xl">
               DIGITAL LEARNING UPKEEP REPORT
             </h2>
@@ -156,7 +145,7 @@ export default function DigitalLearningReport() {
             </p>
           </div>
           <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-[#9a3412]">
-            Report Period: {dateText}
+            Historical reporting period: {historicalPeriod}
           </div>
         </div>
 
@@ -178,7 +167,7 @@ export default function DigitalLearningReport() {
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <ReportCard title="Learning Continuity Impact" className="xl:col-span-6">
             <p className="text-sm leading-6 text-slate-600">
-              Solar + battery backup has significantly reduced power disruptions and improved digital learning continuity.
+              Historical portfolio illustration of learning continuity. It is separate from the selected project’s schedule-driven energy simulation.
             </p>
             <div className="mt-5 rounded-[1.5rem] bg-slate-50 p-4">
               <div className="mb-3 flex items-center justify-between">
@@ -216,7 +205,7 @@ export default function DigitalLearningReport() {
 
           <ReportCard title="Power Reliability Improvement" className="xl:col-span-6">
             <p className="text-sm leading-6 text-slate-600">
-              Solar backup ensures reliable power for all critical digital learning infrastructure.
+              Historical portfolio reliability context; this dashboard does not model or confirm full-load coverage for either selected project.
             </p>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr] md:items-center">
               <div className="w-full h-[224px] min-h-[224px] relative">
@@ -255,7 +244,7 @@ export default function DigitalLearningReport() {
                 <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-4">
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Key Insight</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-emerald-900">
-                    Hybrid solar system with battery backup ensured near-zero disruption in digital learning.
+                    Historical dashboard estimate. Current outage and backup information is presented separately in the schedule simulation.
                   </p>
                 </div>
               </div>
@@ -291,7 +280,7 @@ export default function DigitalLearningReport() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-2xl font-black text-[#0a192f]">45.6 kWp</p>
-                <p className="mt-1 text-sm font-semibold text-slate-600">Solar Capacity</p>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Historic Program Capacity</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-2xl font-black text-[#0a192f]">120 kWh</p>
@@ -308,7 +297,7 @@ export default function DigitalLearningReport() {
             </div>
             <div className="mt-5 rounded-[1.5rem] bg-slate-50 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-[#0a192f]">Solar Generation vs Consumption (kWh)</p>
+                <p className="text-sm font-bold text-[#0a192f]">Historical Portfolio Generation vs Consumption (kWh)</p>
               </div>
               <div className="mt-4 w-full h-[208px] min-h-[208px] relative">
                 {isMounted ? (
@@ -340,7 +329,7 @@ export default function DigitalLearningReport() {
             </div>
             <div className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-4">
               <p className="text-sm font-semibold leading-6 text-[#7c2d12]">
-                Consistent power availability keeps your digital infrastructure always up and running.
+                Historical portfolio narrative; it does not assert that solar or battery meets the full load for the selected project.
               </p>
             </div>
           </ReportCard>

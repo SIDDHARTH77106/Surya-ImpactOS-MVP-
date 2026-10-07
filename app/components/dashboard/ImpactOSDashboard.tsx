@@ -13,9 +13,11 @@ import ReportPreview from "@/app/components/dashboard/ReportPreview";
 import FutureScaleCTA from "@/app/components/dashboard/FutureScaleCTA";
 import SolarBackground from "@/app/components/dashboard/SolarBackground";
 import { SCHOOL_OPTIONS, SchoolFilter } from "@/app/constants/mockData";
+import { SIMULATION_ASSUMPTIONS } from "@/app/constants/solarSchedule";
 
 export default function ImpactOSDashboard() {
-  const [selectedSchool, setSelectedSchool] = React.useState<SchoolFilter>("all");
+  const [selectedSchool, setSelectedSchool] = React.useState<SchoolFilter>("government");
+  const [simulatedDate, setSimulatedDate] = React.useState<string>(SIMULATION_ASSUMPTIONS.defaultDate);
   const monitorSchool: Exclude<SchoolFilter, "all"> = selectedSchool === "all" ? "government" : selectedSchool;
 
   return (
@@ -62,13 +64,18 @@ export default function ImpactOSDashboard() {
               <Institutions selectedSchool={selectedSchool} />
             </div>
             <div>
-              <Analytics selectedSchool={selectedSchool} />
+              <Analytics selectedSchool={selectedSchool} simulatedDate={simulatedDate} />
             </div>
           </div>
         </div>
 
         <div id="section-monitor" className="mt-8 sm:mt-10 lg:mt-12">
-          <RealTimeMonitor key={monitorSchool} selectedSchool={monitorSchool} />
+          <RealTimeMonitor
+            key={monitorSchool}
+            selectedSchool={monitorSchool}
+            simulatedDate={simulatedDate}
+            onSimulatedDateChange={setSimulatedDate}
+          />
         </div>
 
         <div id="section-learning" className="mt-8 sm:mt-10 lg:mt-12">
@@ -81,7 +88,7 @@ export default function ImpactOSDashboard() {
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8">
-          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} />
+          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} simulatedDate={simulatedDate} />
         </div>
       </div>
     </main>
