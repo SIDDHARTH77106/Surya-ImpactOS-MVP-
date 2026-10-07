@@ -10,7 +10,6 @@ import {
   getMonthlyGenerationTotal,
   getOutageDurationHours,
   PROJECTS,
-  SIMULATION_ASSUMPTIONS,
 } from "../../constants/solarSchedule";
 
 type InstitutionSchool = Exclude<SchoolFilter, "all">;
@@ -109,7 +108,6 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
   const institution = DASHBOARD_DATA.institutions.find((item) => item.key === schoolKey);
   const dailyGeneration = getEstimatedDailyGeneration(schoolKey, simulatedDate);
   const monthlyGeneration = getMonthlyGenerationTotal(schoolKey, simulatedDate);
-  const monthlyCo2Kg = monthlyGeneration * SIMULATION_ASSUMPTIONS.co2KgPerKwh;
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -306,7 +304,7 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
     const notes = [
       `Infrastructure scope: ${institution?.details ?? "Solar-enabled classroom infrastructure"}.`,
       `Daily learning outcome: ${institution?.impact ?? "Regular digital learning enabled by clean power"}.`,
-      "No critical failures recorded during academic operating hours."
+      "Demo narrative only; no live operational or meter data is asserted."
     ];
 
     notes.forEach((note) => {
@@ -339,13 +337,13 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
 
   drawSummary();
 
-  drawTable("Current simulated schedule reference", ["Metric", "Value", "Status"], [
-    ["Simulated date", simulatedDate, "Deterministic demo"],
+  drawTable("Selected schedule reference", ["Metric", "Value", "Status"], [
+    ["Selected date", simulatedDate, "Assessment forecast"],
     ["Installed capacity", `${project.capacityKw} kW`, "Configured project value"],
-    ["Estimated daily generation", `${dailyGeneration.toFixed(2)} kWh`, "Schedule-derived"],
-    ["Estimated monthly generation", `${monthlyGeneration.toFixed(2)} kWh`, "All days in selected month"],
+    ["Estimated daily generation", `${dailyGeneration.toFixed(2)} kWh`, "Assessment forecast"],
+    ["Estimated monthly generation", `${monthlyGeneration.toFixed(2)} kWh`, "Forecast for selected month"],
     ["Simulated grid outage", `${getOutageDurationHours(schoolKey)} hours/day`, "Separate from solar generation"],
-    ["Estimated CO2 avoided", `${monthlyCo2Kg.toFixed(1)} kg/month`, "Demo factor only"],
+    ["Forecast source", "Pre-installation assessment", "Not live meter data"],
   ]);
 
   const isESG = report.title.toLowerCase().includes("esg");

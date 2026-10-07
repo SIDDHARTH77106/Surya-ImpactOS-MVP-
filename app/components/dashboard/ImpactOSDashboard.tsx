@@ -15,10 +15,62 @@ import SolarBackground from "@/app/components/dashboard/SolarBackground";
 import { SCHOOL_OPTIONS, SchoolFilter } from "@/app/constants/mockData";
 import { SIMULATION_ASSUMPTIONS } from "@/app/constants/solarSchedule";
 
+type IndiaClock = { date: string; minutes: number; label: string };
+
+function getIndiaClock(): IndiaClock {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: SIMULATION_ASSUMPTIONS.timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date()).reduce<Record<string, string>>((result, part) => {
+    result[part.type] = part.value;
+    return result;
+  }, {});
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  const minutes = Number(parts.hour) * 60 + Number(parts.minute);
+  return { date, minutes, label: `${parts.hour}:${parts.minute} IST` };
+}
+
 export default function ImpactOSDashboard() {
   const [selectedSchool, setSelectedSchool] = React.useState<SchoolFilter>("government");
   const [simulatedDate, setSimulatedDate] = React.useState<string>(SIMULATION_ASSUMPTIONS.defaultDate);
+  const [isLive, setIsLive] = React.useState(true);
+  const [liveClock, setLiveClock] = React.useState<IndiaClock | null>(null);
   const monitorSchool: Exclude<SchoolFilter, "all"> = selectedSchool === "all" ? "government" : selectedSchool;
+  const activeDate = isLive && liveClock ? liveClock.date : simulatedDate;
+
+  React.useEffect(() => {
+    const updateClock = () => setLiveClock(getIndiaClock());
+    updateClock();
+    const timer = window.setInterval(updateClock, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const handleSimulationDateChange = (date: string) => {
+    setSimulatedDate(date);
+    setIsLive(false);
+  };
+
+  const handleExitLive = () => {
+    // Preserve today's India date when a user moves from Live mode into playback.
+    const currentClock = liveClock ?? getIndiaClock();
+    setLiveClock(currentClock);
+    setSimulatedDate(currentClock.date);
+    setIsLive(false);
+  };
+
+  const handleLiveNow = () => {
+    // A direct clock read makes the return control immediate rather than waiting
+    // for the next 30-second refresh.
+    const currentClock = getIndiaClock();
+    setLiveClock(currentClock);
+    setSimulatedDate(currentClock.date);
+    setIsLive(true);
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fcfaf8]">
@@ -64,17 +116,21 @@ export default function ImpactOSDashboard() {
               <Institutions selectedSchool={selectedSchool} />
             </div>
             <div>
-              <Analytics selectedSchool={selectedSchool} simulatedDate={simulatedDate} />
+              <Analytics selectedSchool={selectedSchool} simulatedDate={activeDate} />
             </div>
           </div>
         </div>
 
         <div id="section-monitor" className="mt-8 sm:mt-10 lg:mt-12">
           <RealTimeMonitor
-            key={monitorSchool}
             selectedSchool={monitorSchool}
-            simulatedDate={simulatedDate}
-            onSimulatedDateChange={setSimulatedDate}
+            simulatedDate={activeDate}
+            onSimulatedDateChange={handleSimulationDateChange}
+            isLive={isLive}
+            liveMinutes={liveClock?.minutes ?? null}
+            liveClockLabel={liveClock?.label ?? "Loading IST…"}
+            onLiveNow={handleLiveNow}
+            onExitLive={handleExitLive}
           />
         </div>
 
@@ -88,7 +144,7 @@ export default function ImpactOSDashboard() {
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8">
-          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} simulatedDate={simulatedDate} />
+          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} simulatedDate={activeDate} />
         </div>
       </div>
     </main>

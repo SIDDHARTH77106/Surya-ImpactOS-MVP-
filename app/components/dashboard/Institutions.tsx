@@ -49,13 +49,12 @@ export default function Institutions({ selectedSchool }: InstitutionsProps) {
                 {inst.name}
               </h4>
               
-              {/* Premium Pulsing Live Badge */}
+              {/* Static project profile badge: this section is not a live meter feed. */}
               <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-full uppercase tracking-widest border border-emerald-100/50 shadow-sm">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                Live
+                Project profile
               </span>
             </div>
 
