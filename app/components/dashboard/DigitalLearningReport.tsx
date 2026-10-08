@@ -36,7 +36,8 @@ const chartInitialDimension = { width: 1, height: 1 };
 
 const continuityData = [
   { name: 'Before Solar (2023)', value: 1305, fill: '#cbd5e1' },
-  { name: 'After Solar (2024-25)', value: 400, fill: '#f59e0b' },
+  // 1,840 hours is the rounded 41% increase from the 1,305-hour baseline.
+  { name: 'After Solar (2024-25)', value: 1840, fill: '#f59e0b' },
 ];
 
 const uptimeData = [
@@ -92,7 +93,7 @@ const recommendations = [
 
 const summaryCards = [
   { label: 'Learning Uptime', value: '99.2%', change: '+32% vs last year' },
-  { label: 'Learning Hours', value: '400', change: '+41% vs last year' },
+  { label: 'Learning Hours', value: '1,840', change: '+41% vs last year' },
   { label: 'Electricity Cost Savings', value: 'Rs 2,48,650', change: '-22% vs last year' },
   { label: 'CO2 Avoided (Per Year)', value: '12.6 Tonnes', change: '+26% vs last year' },
   { label: 'Students Impacted', value: '1200+', change: 'Across all institutions' },
@@ -195,7 +196,7 @@ export default function DigitalLearningReport() {
               </div>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-600">Before Solar (2023) - 1,305 h</div>
-                <div className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-600">After Solar (2024-25) - 400 h</div>
+                <div className="rounded-2xl bg-white p-3 text-sm font-bold text-slate-600">After Solar (2024-25) - 1,840 h</div>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-600">
