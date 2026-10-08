@@ -348,8 +348,8 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
     ["Estimated daily generation", `${dailyGeneration.toFixed(2)} kWh`, "Assessment forecast"],
     ["Estimated monthly generation", `${monthlyGeneration.toFixed(2)} kWh`, "Forecast for selected month"],
     ["Completed forecast", `${energyTotals.completedForecastKwh.toFixed(4)} kWh`, `Through ${formatSimulatedTime(currentMinutes)}`],
-    ["Completed mock actual", `${energyTotals.completedMockActualKwh.toFixed(4)} kWh`, "Demo only; not meter data"],
-    ["Mock actual through now", `${energyTotals.mockActualThroughNowKwh.toFixed(4)} kWh`, "Includes elapsed current interval"],
+    ["Completed generated / forecasted", `${energyTotals.completedMockActualKwh.toFixed(4)} kWh`, "Schedule-based estimate; not meter data"],
+    ["Generated / forecasted through now", `${energyTotals.mockActualThroughNowKwh.toFixed(4)} kWh`, "Includes elapsed current interval"],
     ["Simulated grid outage", `${getOutageDurationHours(schoolKey)} hours/day`, "Separate from solar generation"],
     ["Forecast source", "Pre-installation assessment", "Not live meter data"],
   ]);
@@ -455,7 +455,7 @@ export default function ReportPreview({ selectedSchool = "government", simulated
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-[#0a192f] md:text-3xl">Report Repository</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Historical report periods are retained; downloads for {selectedLabel} include schedule-derived forecast and mock-demo totals for {simulatedDate} at {formatSimulatedTime(currentMinutes)}.
+            Historical report periods are retained; downloads for {selectedLabel} include schedule-derived forecast and generated estimates for {simulatedDate} at {formatSimulatedTime(currentMinutes)}.
           </p>
         </div>
 
