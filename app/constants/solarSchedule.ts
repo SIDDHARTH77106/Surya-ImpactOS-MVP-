@@ -29,6 +29,24 @@ export type ScheduleInterval = {
   backupStatus: BackupStatus;
 };
 
+export type IntervalStatus = "future" | "in-progress" | "completed";
+
+export type IntervalEnergySnapshot = {
+  status: IntervalStatus;
+  forecastKwh: number;
+  forecastToNowKwh: number;
+  mockActualToNowKwh: number | null;
+  varianceKwh: number | null;
+  variancePercent: number | null;
+};
+
+export type ScheduleEnergyTotals = {
+  completedForecastKwh: number;
+  completedMockActualKwh: number;
+  forecastThroughNowKwh: number;
+  mockActualThroughNowKwh: number;
+};
+
 export const SIMULATION_ASSUMPTIONS = {
   defaultDate: "2026-10-15",
   timeZone: "Asia/Kolkata",
@@ -91,6 +109,24 @@ function timeLabel(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+function dateKey(date: string | Date) {
+  const parsedDate = parseDate(date);
+  return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}-${String(parsedDate.getDate()).padStart(2, "0")}`;
+}
+
+function stableHash(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function clampMinutes(minutes: number) {
+  return Math.max(0, Math.min(1440, minutes));
 }
 
 export function getDaysInMonth(date: string | Date) {
@@ -166,8 +202,64 @@ export function createDailySchedule(projectKey: ProjectKey, date: string | Date 
   });
 }
 
+/**
+ * Returns a stable, explicitly demo-only reading for a completed interval.
+ * It is derived from the document-based forecast, not from a meter or API.
+ */
+export function getMockActualForInterval(projectKey: ProjectKey, date: string | Date, interval: ScheduleInterval) {
+  if (interval.generationKwh === 0) return 0;
+
+  const slotIndex = interval.startMinutes / SIMULATION_ASSUMPTIONS.intervalMinutes;
+  const seed = stableHash(`${projectKey}:${dateKey(date)}:${interval.startMinutes}`);
+  const daySeed = stableHash(`${projectKey}:${dateKey(date)}`);
+  const direction = (daySeed + slotIndex) % 2 === 0 ? 1 : -1;
+  // 0.004%–0.018%: visible in the variance field while always inside ±0.02%.
+  const relativeOffset = direction * (0.00004 + (seed % 141) / 1_000_000);
+  const intervalHours = (interval.endMinutes - interval.startMinutes) / 60;
+  const capacityLimit = PROJECTS[projectKey].capacityKw * intervalHours;
+
+  return Math.min(capacityLimit, Math.max(0, interval.generationKwh * (1 + relativeOffset)));
+}
+
+export function getIntervalEnergySnapshot(projectKey: ProjectKey, date: string | Date, interval: ScheduleInterval, currentMinutes: number): IntervalEnergySnapshot {
+  const safeMinutes = clampMinutes(currentMinutes);
+  const duration = interval.endMinutes - interval.startMinutes;
+  const elapsedFraction = Math.max(0, Math.min(1, (safeMinutes - interval.startMinutes) / duration));
+  const status: IntervalStatus = safeMinutes >= interval.endMinutes
+    ? "completed"
+    : safeMinutes > interval.startMinutes
+      ? "in-progress"
+      : "future";
+  const forecastToNowKwh = interval.generationKwh * elapsedFraction;
+
+  if (status === "future") {
+    return { status, forecastKwh: interval.generationKwh, forecastToNowKwh: 0, mockActualToNowKwh: null, varianceKwh: null, variancePercent: null };
+  }
+
+  const mockActualToNowKwh = getMockActualForInterval(projectKey, date, interval) * elapsedFraction;
+  const varianceKwh = mockActualToNowKwh - forecastToNowKwh;
+  const variancePercent = forecastToNowKwh === 0 ? 0 : (varianceKwh / forecastToNowKwh) * 100;
+
+  return { status, forecastKwh: interval.generationKwh, forecastToNowKwh, mockActualToNowKwh, varianceKwh, variancePercent };
+}
+
+export function getScheduleEnergyTotals(projectKey: ProjectKey, date: string | Date, schedule: ScheduleInterval[], currentMinutes: number): ScheduleEnergyTotals {
+  return schedule.reduce<ScheduleEnergyTotals>((totals, interval) => {
+    const snapshot = getIntervalEnergySnapshot(projectKey, date, interval, currentMinutes);
+    if (snapshot.status === "future") return totals;
+
+    totals.forecastThroughNowKwh += snapshot.forecastToNowKwh;
+    totals.mockActualThroughNowKwh += snapshot.mockActualToNowKwh ?? 0;
+    if (snapshot.status === "completed") {
+      totals.completedForecastKwh += snapshot.forecastKwh;
+      totals.completedMockActualKwh += snapshot.mockActualToNowKwh ?? 0;
+    }
+    return totals;
+  }, { completedForecastKwh: 0, completedMockActualKwh: 0, forecastThroughNowKwh: 0, mockActualThroughNowKwh: 0 });
+}
+
 export function getEstimatedGenerationSoFar(schedule: ScheduleInterval[], simulatedMinutes: number) {
-  return roundToTwo(schedule.filter((interval) => interval.endMinutes <= Math.max(0, Math.min(1440, simulatedMinutes))).reduce((sum, interval) => sum + interval.generationKwh, 0));
+  return roundToTwo(schedule.filter((interval) => interval.endMinutes <= clampMinutes(simulatedMinutes)).reduce((sum, interval) => sum + interval.generationKwh, 0));
 }
 
 /** Backward-compatible alias retained for existing consumers. */

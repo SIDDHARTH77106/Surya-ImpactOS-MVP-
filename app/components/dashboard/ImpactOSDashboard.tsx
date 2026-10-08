@@ -38,10 +38,12 @@ function getIndiaClock(): IndiaClock {
 export default function ImpactOSDashboard() {
   const [selectedSchool, setSelectedSchool] = React.useState<SchoolFilter>("government");
   const [simulatedDate, setSimulatedDate] = React.useState<string>(SIMULATION_ASSUMPTIONS.defaultDate);
+  const [simulatedMinutes, setSimulatedMinutes] = React.useState(12 * 60);
   const [isLive, setIsLive] = React.useState(true);
   const [liveClock, setLiveClock] = React.useState<IndiaClock | null>(null);
   const monitorSchool: Exclude<SchoolFilter, "all"> = selectedSchool === "all" ? "government" : selectedSchool;
   const activeDate = isLive && liveClock ? liveClock.date : simulatedDate;
+  const activeMinutes = isLive && liveClock ? liveClock.minutes : simulatedMinutes;
 
   React.useEffect(() => {
     const updateClock = () => setLiveClock(getIndiaClock());
@@ -60,6 +62,7 @@ export default function ImpactOSDashboard() {
     const currentClock = liveClock ?? getIndiaClock();
     setLiveClock(currentClock);
     setSimulatedDate(currentClock.date);
+    setSimulatedMinutes(currentClock.minutes);
     setIsLive(false);
   };
 
@@ -69,6 +72,7 @@ export default function ImpactOSDashboard() {
     const currentClock = getIndiaClock();
     setLiveClock(currentClock);
     setSimulatedDate(currentClock.date);
+    setSimulatedMinutes(currentClock.minutes);
     setIsLive(true);
   };
 
@@ -126,6 +130,8 @@ export default function ImpactOSDashboard() {
             selectedSchool={monitorSchool}
             simulatedDate={activeDate}
             onSimulatedDateChange={handleSimulationDateChange}
+            simulatedMinutes={simulatedMinutes}
+            onSimulatedMinutesChange={setSimulatedMinutes}
             isLive={isLive}
             liveMinutes={liveClock?.minutes ?? null}
             liveClockLabel={liveClock?.label ?? "Loading IST…"}
@@ -144,7 +150,7 @@ export default function ImpactOSDashboard() {
         </div>
 
         <div className="mt-12 border-t border-slate-200 pt-8">
-          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} simulatedDate={activeDate} />
+          <ReportPreview key={monitorSchool} selectedSchool={monitorSchool} simulatedDate={activeDate} currentMinutes={activeMinutes} />
         </div>
       </div>
     </main>

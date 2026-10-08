@@ -6,9 +6,12 @@ import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import { DASHBOARD_DATA, SCHOOL_DATA, SCHOOL_OPTIONS, SchoolFilter } from "../../constants/mockData";
 import {
+  createDailySchedule,
   getEstimatedDailyGeneration,
   getMonthlyGenerationTotal,
   getOutageDurationHours,
+  getScheduleEnergyTotals,
+  formatSimulatedTime,
   PROJECTS,
 } from "../../constants/solarSchedule";
 
@@ -40,6 +43,7 @@ type ReportSchoolProfile = {
 type ReportPreviewProps = {
   selectedSchool?: InstitutionSchool | "all";
   simulatedDate: string;
+  currentMinutes: number;
 };
 
 const schoolOptions = SCHOOL_OPTIONS.filter((option): option is { key: InstitutionSchool; label: string } => option.key !== "all");
@@ -101,13 +105,14 @@ async function loadLogoDataUrl(): Promise<string | null> {
   }
 }
 
-function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulatedDate: string, logoDataUrl: string | null) {
+function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulatedDate: string, currentMinutes: number, logoDataUrl: string | null) {
   const profile = schoolProfiles[schoolKey];
   const project = PROJECTS[schoolKey];
   const schoolData = SCHOOL_DATA[schoolKey];
   const institution = DASHBOARD_DATA.institutions.find((item) => item.key === schoolKey);
   const dailyGeneration = getEstimatedDailyGeneration(schoolKey, simulatedDate);
   const monthlyGeneration = getMonthlyGenerationTotal(schoolKey, simulatedDate);
+  const energyTotals = getScheduleEnergyTotals(schoolKey, simulatedDate, createDailySchedule(schoolKey, simulatedDate), currentMinutes);
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -342,6 +347,9 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
     ["Installed capacity", `${project.capacityKw} kW`, "Configured project value"],
     ["Estimated daily generation", `${dailyGeneration.toFixed(2)} kWh`, "Assessment forecast"],
     ["Estimated monthly generation", `${monthlyGeneration.toFixed(2)} kWh`, "Forecast for selected month"],
+    ["Completed forecast", `${energyTotals.completedForecastKwh.toFixed(4)} kWh`, `Through ${formatSimulatedTime(currentMinutes)}`],
+    ["Completed mock actual", `${energyTotals.completedMockActualKwh.toFixed(4)} kWh`, "Demo only; not meter data"],
+    ["Mock actual through now", `${energyTotals.mockActualThroughNowKwh.toFixed(4)} kWh`, "Includes elapsed current interval"],
     ["Simulated grid outage", `${getOutageDurationHours(schoolKey)} hours/day`, "Separate from solar generation"],
     ["Forecast source", "Pre-installation assessment", "Not live meter data"],
   ]);
@@ -402,7 +410,7 @@ function addReportPdf(report: ReportItem, schoolKey: InstitutionSchool, simulate
   pdf.save(`${filenameForTitle(report.title, project.name)}.pdf`);
 }
 
-export default function ReportPreview({ selectedSchool = "government", simulatedDate }: ReportPreviewProps) {
+export default function ReportPreview({ selectedSchool = "government", simulatedDate, currentMinutes }: ReportPreviewProps) {
   const reports = useMemo<ReportItem[]>(
     () =>
       DASHBOARD_DATA.reports || [
@@ -423,7 +431,7 @@ export default function ReportPreview({ selectedSchool = "government", simulated
 
     try {
       const logoDataUrl = await loadLogoDataUrl();
-      addReportPdf(report, reportSchool, simulatedDate, logoDataUrl);
+      addReportPdf(report, reportSchool, simulatedDate, currentMinutes, logoDataUrl);
     } catch (error) {
       console.error("PDF generation failed:", error);
       alert("PDF generation failed. Check console for details.");
@@ -447,7 +455,7 @@ export default function ReportPreview({ selectedSchool = "government", simulated
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-[#0a192f] md:text-3xl">Report Repository</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Historical report periods are retained; downloads for {selectedLabel} include a schedule-derived demo reference for {simulatedDate}.
+            Historical report periods are retained; downloads for {selectedLabel} include schedule-derived forecast and mock-demo totals for {simulatedDate} at {formatSimulatedTime(currentMinutes)}.
           </p>
         </div>
 
